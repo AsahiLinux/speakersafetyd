@@ -1,0 +1,9 @@
+[package]
+name = "synth-example"
+version = "0.1.0"
+authors = ["David Henningsson <coding@diwic.se>"]
+edition = "2018"
+
+[dependencies]
+dasp = { version = "0.11", features = ["signal"] }
+alsa = { path = "..", version = "0.6" }

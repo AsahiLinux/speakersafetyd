@@ -1,0 +1,11 @@
+[package]
+name = "speakersafety-2"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+half = "^2.1.0"
+alsa = { path = "./alsa"  }
+configparser = "^3.0.2"
