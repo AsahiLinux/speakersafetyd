@@ -8,6 +8,7 @@
 */
 use std::io;
 use std::fs::read_to_string;
+use std::{thread::sleep, time};
 
 use configparser::ini::Ini;
 
@@ -78,7 +79,7 @@ fn main() {
 
     loop {
         // Block while we're reading into the buffer
-        assert_eq!(io.readi(&mut buf).unwrap(), buf.len());
+        io.readi(&mut buf).unwrap();
         for i in &mut speakers {
             i.run(&card, &buf);
         }

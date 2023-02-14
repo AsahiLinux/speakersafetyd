@@ -172,8 +172,8 @@ impl SafetyMonitor for Speaker {
     }
 
     fn power_now(&mut self, vs: &[i16], is: &[i16]) -> f32 {
-        let v_avg: f32 = (vs.iter().sum::<i16>() as f32 / vs.len() as f32) * (14 / (2 ^ 15)) as f32;
-        let i_avg: f32 = (is.iter().sum::<i16>() as f32 / is.len() as f32) * (14 / (2 ^ 15)) as f32;
+        let v_avg: f32 = helpers::average(vs) * (14 / (2 ^ 15)) as f32;
+        let i_avg: f32 = helpers::average(is) * (3.75 / (2 ^ 15) as f32) as f32;
 
         return v_avg * i_avg;
     }
@@ -181,8 +181,8 @@ impl SafetyMonitor for Speaker {
     // I'm not sure on the maths here for determining when to start dropping the volume.
     fn run(&mut self, card: &Ctl, buf: &[i16; 128 * 6 * 2]) {
         let lvl: f32 = self.alsa_iface.get_lvl(card);
-        let vsense = &buf[(128 * self.vs_chan as usize - 1) .. (128 * self.vs_chan as usize - 1) + 128];
-        let isense = &buf[(128 * self.is_chan as usize - 1) .. (128 * self.is_chan as usize - 1) + 128];
+        let vsense = &buf[(128 * self.vs_chan) as usize .. (128 * (self.vs_chan + 1) - 1) as usize];
+        let isense = &buf[(128 * self.is_chan) as usize .. (128 * (self.is_chan + 1) - 1) as usize];
 
         // Estimate temperature of VC and magnet
         let temp0: f32 = 35f32;
@@ -193,33 +193,29 @@ impl SafetyMonitor for Speaker {
 
         // Power through the voice coil (average of most recent 128 samples)
         let pwr: f32 = self.power_now(&vsense, &isense);
+        println!("Power now is {:.2} mW", pwr);
 
         let vc_target: f32 = temp_magnet + pwr * self.tau_coil;
         temp_vc = vc_target * alpha_vc + temp_vc * (1.0 - alpha_vc);
-        println!("Current voice coil temp: {:.2}*C", temp_vc);
+        println!("Current voice coil temp: {:.2} *C", temp_vc);
 
         let magnet_target: f32 = temp0 + pwr * self.tau_magnet;
         temp_magnet = magnet_target  * alpha_magnet + temp_magnet * (1.0 - alpha_magnet);
-        println!("Current magnet temp: {:.2}*C", temp_magnet);
+        println!("Current magnet temp: {:.2} *C", temp_magnet);
 
         if temp_vc < self.temp_limit {
             println!("Voice coil for {} below temp limit, ramping back up.", self.name);
             // For every degree below temp_limit, raise level by 0.5 dB
-            let new_lvl: f32 = lvl + ((self.temp_limit - temp_vc) as f32 * 0.5);
+            let new_lvl: f32 = lvl + ((self.temp_limit - temp_vc) * 0.5);
             self.alsa_iface.set_lvl(card, new_lvl);
         }
 
         if temp_vc > (self.temp_limit - 15f32) {
             println!("Voice coil at {}*C on {}! Dropping volume!", temp_vc, self.name);
             // For every degree above temp_limit, drop the level by 1.5 dB
-            let new_lvl: f32 = lvl - ((temp_vc - self.temp_limit) as f32 * 1.5);
+            let new_lvl: f32 = lvl - ((temp_vc - (self.temp_limit - 15f32)) * 1.5);
             self.alsa_iface.set_lvl(card, new_lvl);
         }
-
-        println!("Volume on {} is currently {} dB. Setting to -18 dB.", self.name, lvl);
-
-        let new_lvl: f32 = -18.0;
-        self.alsa_iface.set_lvl(card, new_lvl);
 
         println!("Volume on {} is now {} dB", self.name, self.alsa_iface.get_lvl(card));
     }

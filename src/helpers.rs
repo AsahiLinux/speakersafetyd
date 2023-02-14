@@ -15,6 +15,18 @@ pub fn fail() {
     std::process::exit(1);
 }
 
+pub fn average(a: &[i16]) -> f32 {
+    let mut sum: f32 = 0.0;
+    let mut avg: f32 = 0.0;
+    for i in a {
+        sum = sum + *i as f32;
+    }
+
+    avg = sum / (a.len() as f32);
+
+    return avg;
+}
+
 pub fn open_card(card: &str) -> alsa::ctl::Ctl {
     let ctldev: alsa::ctl::Ctl = match alsa::ctl::Ctl::new(card, false) {
         Ok(ctldev) => ctldev,
@@ -35,9 +47,9 @@ pub fn open_pcm(dev: &str, chans: &u32) -> alsa::pcm::PCM {
         let params = alsa::pcm::HwParams::any(&pcm).unwrap();
 
         params.set_channels(*chans).unwrap();
-        params.set_rate(44100, alsa::ValueOr::Nearest).unwrap();
+        params.set_rate(48000, alsa::ValueOr::Nearest).unwrap();
         params.set_format(alsa::pcm::Format::s16()).unwrap();
-        params.set_access(alsa::pcm::Access::RWNonInterleaved).unwrap();
+        params.set_access(alsa::pcm::Access::RWInterleaved).unwrap();
         pcm.hw_params(&params).unwrap();
     }
 
