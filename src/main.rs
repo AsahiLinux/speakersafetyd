@@ -83,5 +83,6 @@ fn main() {
         for i in &mut speakers {
             i.run(&card, &buf);
         }
+        buf = [0i16; BUF_SZ];
     }
 }
