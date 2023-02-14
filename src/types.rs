@@ -2,7 +2,6 @@
 // (C) 2022 The Asahi Linux Contributors
 
 use std::ffi::{CString, CStr};
-use half::f16;
 use configparser::ini::Ini;
 use alsa::ctl::Ctl;
 
@@ -12,8 +11,7 @@ use crate::helpers;
     Struct with fields necessary for manipulating an ALSA elem.
 
     The val field is created using a wrapper so that we can handle
-    any errors. This is also necessary so that we can create one of type
-    Bytes for the V/ISENSE elems.
+    any errors.
 */
 struct Elem {
     elem_name: String,
@@ -53,8 +51,8 @@ impl ALSAElem for Elem {
     Speaker. Populated with the important ALSA controls at runtime.
 
     level:  mixer volume control
-    vsense: VSENSE as reported by the driver (V, readonly)
-    isense: ISENSE as reported by the driver (A, readonly)
+    vsense: VSENSE switch
+    isense: ISENSE switch
 
 */
 struct Mixer {
@@ -67,14 +65,12 @@ struct Mixer {
 trait ALSACtl {
     fn new(name: &str, card: &Ctl) -> Self;
 
-    fn get_vsense(&mut self, card: &Ctl) -> f16;
-    fn get_isense(&mut self, card: &Ctl) -> f16;
     fn get_lvl(&mut self, card: &Ctl) -> f32;
     fn set_lvl(&mut self, card: &Ctl, lvl: f32);
 }
 
 impl ALSACtl for Mixer {
-    // TODO: wire up real V/ISENSE elems (pending driver support)
+    // TODO: implement turning on V/ISENSE
     fn new(name: &str, card: &Ctl) -> Mixer {
         let new_mixer: Mixer = { Mixer {
             drv: name.to_owned(),
@@ -87,49 +83,6 @@ impl ALSACtl for Mixer {
         }};
 
         return new_mixer;
-    }
-
-    /**
-        MOCK IMPLEMENTATIONS
-
-        V/ISENSE are 16-bit floats sent in a 32-bit TDM slot by the codec.
-        This is expressed by the driver as a byte array, with rightmost 16
-        bits as padding.
-
-        TODO: Condense into a single function and pass in a borrowed Elem
-    */
-    fn get_vsense(&mut self, card: &Ctl) -> f16 {
-        helpers::read_ev(card, &mut self.vsense.val, &self.vsense.elem_name);
-        let val: &[u8] = match self.vsense.val.get_bytes() {
-            Some(inner) => inner,
-            None => {
-                println!("Could not read VSENSE from {}", self.drv);
-                helpers::fail();
-                std::process::exit(1);
-            }
-        };
-
-
-        let vs = f16::from_ne_bytes([val[0], val[1]]);
-
-        return vs;
-    }
-
-    fn get_isense(&mut self, card: &Ctl) -> f16 {
-        helpers::read_ev(card, &mut self.isense.val, &self.isense.elem_name);
-        let val: &[u8] = match self.vsense.val.get_bytes() {
-            Some(inner) => inner,
-            None => {
-                println!("Could not read ISENSE from {}", self.drv);
-                helpers::fail();
-                std::process::exit(1);
-            }
-        };
-
-
-        let is = f16::from_ne_bytes([val[0], val[1]]);
-
-        return is;
     }
 
     fn get_lvl(&mut self, card: &Ctl) -> f32 {
@@ -186,16 +139,19 @@ impl ALSACtl for Mixer {
 pub struct Speaker {
     name: String,
     alsa_iface: Mixer,
-    tau_coil: f64,
-    tr_coil: f64,
-    temp_limit: f64,
+    tau_coil: f32,
+    tau_magnet: f32,
+    tr_coil: f32,
+    temp_limit: f32,
+    vs_chan: i64,
+    is_chan: i64,
 }
 
 
 pub trait SafetyMonitor {
     fn new(driver_name: &str, config: &Ini, card: &Ctl) -> Self;
-
-    fn run(&mut self, card: &Ctl);
+    fn power_now(&mut self, vs: &[i16], is: &[i16]) -> f32;
+    fn run(&mut self, card: &Ctl, buf: &[i16; 128 * 6 * 2]);
 }
 
 impl SafetyMonitor for Speaker {
@@ -204,39 +160,61 @@ impl SafetyMonitor for Speaker {
             name: driver_name.to_string(),
             alsa_iface: ALSACtl::new(&driver_name, card),
             tau_coil: helpers::parse_float(config, driver_name, "tau_coil"),
+            tau_magnet: helpers::parse_float(config, driver_name, "tau_magnet"),
             tr_coil: helpers::parse_float(config, driver_name, "tr_coil"),
             temp_limit: helpers::parse_float(config, driver_name, "temp_limit"),
+            vs_chan: helpers::parse_int(config, driver_name, "vs_chan"),
+            is_chan: helpers::parse_int(config, driver_name, "is_chan"),
+
         }};
 
         return new_speaker;
     }
 
+    fn power_now(&mut self, vs: &[i16], is: &[i16]) -> f32 {
+        let v_avg: f32 = (vs.iter().sum::<i16>() as f32 / vs.len() as f32) * (14 / (2 ^ 15)) as f32;
+        let i_avg: f32 = (is.iter().sum::<i16>() as f32 / is.len() as f32) * (14 / (2 ^ 15)) as f32;
+
+        return v_avg * i_avg;
+    }
+
     // I'm not sure on the maths here for determining when to start dropping the volume.
-    fn run(&mut self, card: &Ctl) {
-        //let v: f16 = self.alsa_iface.get_vsense(card);
-        //let i: f16 = self.alsa_iface.get_isense(card);
+    fn run(&mut self, card: &Ctl, buf: &[i16; 128 * 6 * 2]) {
         let lvl: f32 = self.alsa_iface.get_lvl(card);
+        let vsense = &buf[(128 * self.vs_chan as usize - 1) .. (128 * self.vs_chan as usize - 1) + 128];
+        let isense = &buf[(128 * self.is_chan as usize - 1) .. (128 * self.is_chan as usize - 1) + 128];
 
-        // Technically, this is the temp ~tau_coil seconds in the future
-        //let temp: f64 = ((v * i).to_f64()) * self.tr_coil;
+        // Estimate temperature of VC and magnet
+        let temp0: f32 = 35f32;
+        let mut temp_vc: f32 = temp0;
+        let mut temp_magnet: f32 = temp0;
+        let alpha_vc: f32 = 0.01 / (temp_vc + 0.01);
+        let alpha_magnet: f32 = 0.01 / (temp_magnet + 0.01);
 
-        // if temp < self.temp_limit && lvl < 0f32 {
-        //     println!("Voice coil for {} below temp limit, ramping back up.", self.name);
-        //
-        //     // For every degree below temp_limit, raise level by 0.5 dB
-        //     let new_lvl: f32 = lvl + ((self.temp_limit - temp) as f32 * 0.5);
-        //     self.alsa_iface.set_lvl(card, new_lvl);
-        // }
-        //
-        // if temp > self.temp_limit {
-        //     println!("Voice coil at {}*C in {} on {}! Dropping volume!", temp, self.tau_coil, self.name);
-        //
-        //     // For every degree above temp_limit, drop the level by 1.5 dB
-        //     let new_lvl: f32 = lvl - ((temp - self.temp_limit) as f32 * 1.5);
-        //     self.alsa_iface.set_lvl(card, new_lvl);
-        // }
+        // Power through the voice coil (average of most recent 128 samples)
+        let pwr: f32 = self.power_now(&vsense, &isense);
 
-        // TEMPORARY PROOF THAT THIS WORKS!
+        let vc_target: f32 = temp_magnet + pwr * self.tau_coil;
+        temp_vc = vc_target * alpha_vc + temp_vc * (1.0 - alpha_vc);
+        println!("Current voice coil temp: {:.2}*C", temp_vc);
+
+        let magnet_target: f32 = temp0 + pwr * self.tau_magnet;
+        temp_magnet = magnet_target  * alpha_magnet + temp_magnet * (1.0 - alpha_magnet);
+        println!("Current magnet temp: {:.2}*C", temp_magnet);
+
+        if temp_vc < self.temp_limit {
+            println!("Voice coil for {} below temp limit, ramping back up.", self.name);
+            // For every degree below temp_limit, raise level by 0.5 dB
+            let new_lvl: f32 = lvl + ((self.temp_limit - temp_vc) as f32 * 0.5);
+            self.alsa_iface.set_lvl(card, new_lvl);
+        }
+
+        if temp_vc > (self.temp_limit - 15f32) {
+            println!("Voice coil at {}*C on {}! Dropping volume!", temp_vc, self.name);
+            // For every degree above temp_limit, drop the level by 1.5 dB
+            let new_lvl: f32 = lvl - ((temp_vc - self.temp_limit) as f32 * 1.5);
+            self.alsa_iface.set_lvl(card, new_lvl);
+        }
 
         println!("Volume on {} is currently {} dB. Setting to -18 dB.", self.name, lvl);
 
@@ -244,7 +222,5 @@ impl SafetyMonitor for Speaker {
         self.alsa_iface.set_lvl(card, new_lvl);
 
         println!("Volume on {} is now {} dB", self.name, self.alsa_iface.get_lvl(card));
-
     }
-
 }

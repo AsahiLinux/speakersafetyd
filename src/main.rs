@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 // (C) 2022 The Asahi Linux Contributors
-
-
 /**
     Handles speaker safety on Apple Silicon machines. This code is designed to
     fail safe. The speaker should not be enabled until this daemon has successfully
     initialised. If at any time we run into an unrecoverable error (we shouldn't),
     we gracefully bail and use an IOCTL to shut off the speakers.
 */
-
-
 use std::io;
 use std::fs::read_to_string;
 
@@ -21,13 +17,15 @@ mod helpers;
 use crate::types::SafetyMonitor;
 
 static ASAHI_DEVICE: &str = "hw:0";
+static VISENSE_PCM: &str = "hw:0,2";
 
 // Will eventually be /etc/speakersafetyd/ or similar
 static CONFIG_DIR: &str = "./";
-static SUPPORTED: [&str; 2] = [
+static SUPPORTED: [&str; 1] = [
     "j314",
-    "j316",
 ];
+
+const BUF_SZ: usize = 128 * 6 * 2;
 
 fn get_machine() -> String {
     let _compat: io::Result<String> = match read_to_string("/proc/device-tree/compatible") {
@@ -71,10 +69,18 @@ fn main() {
         speakers.push(new_speaker);
     }
 
-    // Temporary to check that everything works. Threaded eventually if necessary.
-    for mut i in speakers {
-        i.run(&card);
+    let num_chans: u32 = speakers.len().try_into().unwrap();
+
+    // Set up PCM to buffer in V/ISENSE
+    let cap: alsa::pcm::PCM = helpers::open_pcm(&VISENSE_PCM, &num_chans);
+    let mut buf = [0i16; BUF_SZ]; // 128 samples from V and I for 6 channels
+    let io = cap.io_i16().unwrap();
+
+    loop {
+        // Block while we're reading into the buffer
+        assert_eq!(io.readi(&mut buf).unwrap(), buf.len());
+        for i in &mut speakers {
+            i.run(&card, &buf);
+        }
     }
-
-
 }

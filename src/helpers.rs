@@ -3,6 +3,7 @@
 
 use configparser::ini::Ini;
 use alsa::mixer::MilliBel;
+use alsa;
 
 /**
     Failsafe: Limit speaker volume massively and bail.
@@ -27,16 +28,59 @@ pub fn open_card(card: &str) -> alsa::ctl::Ctl {
     return ctldev;
 }
 
+pub fn open_pcm(dev: &str, chans: &u32) -> alsa::pcm::PCM {
+    let pcm = alsa::pcm::PCM::new(dev, alsa::Direction::Capture, false)
+        .unwrap();
+    {
+        let params = alsa::pcm::HwParams::any(&pcm).unwrap();
+
+        params.set_channels(*chans).unwrap();
+        params.set_rate(44100, alsa::ValueOr::Nearest).unwrap();
+        params.set_format(alsa::pcm::Format::s16()).unwrap();
+        params.set_access(alsa::pcm::Access::RWNonInterleaved).unwrap();
+        pcm.hw_params(&params).unwrap();
+    }
+
+    return pcm;
+}
+
+/**
+    Wrapper around configparser::ini::Ini.getint()
+    to safely unwrap the Result<Option<f64>, E> returned by
+    it.
+*/
+pub fn parse_int(config: &Ini, section: &str, key: &str) -> i64 {
+    let _result: Option<i64> = match config.getint(section, key) {
+            Ok(result) => match result{
+                Some(inner) => {
+                    let integer: i64 = inner;
+                    return integer;
+                },
+                None => {
+                    println!("{}: Failed to parse {}", section, key);
+                    fail();
+                    std::process::exit(1);
+                },
+            },
+            Err(e) => {
+                println!("{}: Invalid value for {}. Error: {}", section, key, e);
+                fail();
+                std::process::exit(1);
+            },
+    };
+
+}
+
 /**
     Wrapper around configparser::ini::Ini.getfloat()
     to safely unwrap the Result<Option<f64>, E> returned by
     it.
 */
-pub fn parse_float(config: &Ini, section: &str, key: &str) -> f64 {
+pub fn parse_float(config: &Ini, section: &str, key: &str) -> f32 {
     let _result: Option<f64> = match config.getfloat(section, key) {
             Ok(result) => match result{
                 Some(inner) => {
-                    let float: f64 = inner;
+                    let float: f32 = inner as f32;
                     return float;
                 },
                 None => {
