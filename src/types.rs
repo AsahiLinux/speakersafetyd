@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 // (C) 2022 The Asahi Linux Contributors
 
-use std::ffi::{CString, CStr};
-use configparser::ini::Ini;
 use alsa::ctl::Ctl;
+use configparser::ini::Ini;
+use log::{debug, error, info, trace, warn};
+use std::ffi::{CStr, CString};
 
 use crate::helpers;
 
@@ -19,21 +20,19 @@ struct Elem {
     val: alsa::ctl::ElemValue,
 }
 
-trait ALSAElem {
-    fn new(name: String, card: &Ctl, t: alsa::ctl::ElemType) -> Self;
-}
-
-impl ALSAElem for Elem {
-        fn new(name: String, card: &Ctl, t: alsa::ctl::ElemType) -> Elem {
+impl Elem {
+    fn new(name: String, card: &Ctl, t: alsa::ctl::ElemType) -> Elem {
         // CString::new() cannot borrow a String. We want name for the elem
         // for error identification though, so it can't consume name directly.
         let borrow: String = name.clone();
 
-        let mut new_elem: Elem = { Elem {
-            elem_name: name,
-            id: alsa::ctl::ElemId::new(alsa::ctl::ElemIface::Mixer),
-            val: helpers::new_elemvalue(t),
-        }};
+        let mut new_elem: Elem = {
+            Elem {
+                elem_name: name,
+                id: alsa::ctl::ElemId::new(alsa::ctl::ElemIface::Mixer),
+                val: helpers::new_elemvalue(t),
+            }
+        };
 
         let cname: CString = CString::new(borrow).unwrap();
         let cstr: &CStr = cname.as_c_str();
@@ -42,7 +41,7 @@ impl ALSAElem for Elem {
         new_elem.val.set_id(&new_elem.id);
         helpers::read_ev(card, &mut new_elem.val, &new_elem.elem_name);
 
-       return new_elem;
+        return new_elem;
     }
 }
 
@@ -58,68 +57,111 @@ impl ALSAElem for Elem {
 struct Mixer {
     drv: String,
     level: Elem,
-    vsense: Elem,
-    isense: Elem,
+    amp_gain: Elem,
 }
 
-trait ALSACtl {
-    fn new(name: &str, card: &Ctl) -> Self;
-
-    fn get_lvl(&mut self, card: &Ctl) -> f32;
-    fn set_lvl(&mut self, card: &Ctl, lvl: f32);
-}
-
-impl ALSACtl for Mixer {
+impl Mixer {
     // TODO: implement turning on V/ISENSE
     fn new(name: &str, card: &Ctl) -> Mixer {
-        let new_mixer: Mixer = { Mixer {
-            drv: name.to_owned(),
-            level: ALSAElem::new(name.to_owned() + " Speaker Volume", card,
-                                 alsa::ctl::ElemType::Integer),
-            vsense: ALSAElem::new(name.to_owned() + " VSENSE Switch", card,
-                                  alsa::ctl::ElemType::Boolean),
-            isense: ALSAElem::new(name.to_owned() + " ISENSE Switch", card,
-                                  alsa::ctl::ElemType::Boolean),
-        }};
+        let mut vs = Elem::new(
+            name.to_owned() + " VSENSE Switch",
+            card,
+            alsa::ctl::ElemType::Boolean,
+        );
 
-        return new_mixer;
+        vs.val.set_boolean(0, true);
+        helpers::write_ev(card, &vs.val, &vs.elem_name);
+        helpers::read_ev(card, &mut vs.val, &vs.elem_name);
+        assert!(vs.val.get_boolean(0).unwrap());
+
+        let mut is = Elem::new(
+            name.to_owned() + " ISENSE Switch",
+            card,
+            alsa::ctl::ElemType::Boolean,
+        );
+
+        is.val.set_boolean(0, true);
+        helpers::write_ev(card, &is.val, &is.elem_name);
+        helpers::read_ev(card, &mut vs.val, &vs.elem_name);
+        assert!(vs.val.get_boolean(0).unwrap());
+
+        Mixer {
+            drv: name.to_owned(),
+            level: Elem::new(
+                name.to_owned() + " Speaker Volume",
+                card,
+                alsa::ctl::ElemType::Integer,
+            ),
+            amp_gain: Elem::new(
+                name.to_owned() + " Amp Gain Volume",
+                card,
+                alsa::ctl::ElemType::Integer,
+            ),
+        }
+    }
+
+    fn get_amp_gain(&mut self, card: &Ctl) -> f32 {
+        helpers::read_ev(card, &mut self.amp_gain.val, &self.amp_gain.elem_name);
+
+        let val = self
+            .amp_gain
+            .val
+            .get_integer(0)
+            .expect(&format!("Could not read amp gain for {}", self.drv));
+
+        helpers::int_to_db(card, &self.amp_gain.id, val).to_db()
     }
 
     fn get_lvl(&mut self, card: &Ctl) -> f32 {
         helpers::read_ev(card, &mut self.level.val, &self.level.elem_name);
 
-        let val: i32 = match self.level.val.get_integer(0) {
-            Some(inner) => inner,
-            None => {
-                println!("Could not read level from {}", self.drv);
-                helpers::fail();
-                std::process::exit(1);
-            },
-        };
+        let val = self
+            .level
+            .val
+            .get_integer(0)
+            .expect(&format!("Could not read level for {}", self.drv));
 
-        let db: f32 = helpers::int_to_db(card, &self.level.id, val).to_db();
-
-        return db;
+        helpers::int_to_db(card, &self.level.id, val).to_db()
     }
 
     fn set_lvl(&mut self, card: &Ctl, lvl: f32) {
-
         let new_val: i32 = helpers::db_to_int(card, &self.level.id, lvl);
 
         match self.level.val.set_integer(0, new_val) {
-            Some(_) => {},
+            Some(_) => {}
             None => {
                 println!("Could not set level for {}", self.drv);
                 helpers::fail();
                 std::process::exit(1);
-            },
+            }
         };
 
         helpers::write_ev(card, &self.level.val, &self.level.elem_name);
-
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct Globals {
+    pub visense_pcm: usize,
+    pub channels: usize,
+    pub period: usize,
+    pub t_ambient: f32,
+    pub t_safe_max: f32,
+    pub t_hysteresis: f32,
+}
+
+impl Globals {
+    pub fn parse(config: &Ini) -> Self {
+        Self {
+            visense_pcm: helpers::parse_int(config, "Globals", "visense_pcm"),
+            channels: helpers::parse_int(config, "Globals", "channels"),
+            period: helpers::parse_int(config, "Globals", "period"),
+            t_ambient: helpers::parse_float(config, "Globals", "t_ambient"),
+            t_safe_max: helpers::parse_float(config, "Globals", "t_safe_max"),
+            t_hysteresis: helpers::parse_float(config, "Globals", "t_hysteresis"),
+        }
+    }
+}
 
 /**
     Struct representing a driver. Parameters are parsed out of a config
@@ -132,91 +174,170 @@ impl ALSACtl for Mixer {
     tau_coil:    voice coil ramp time constant (seconds)
     tau_magnet:  magnet ramp time constant (seconds)
     tr_coil:     thermal resistance of voice coil (*C/W)
-    temp_limit:  absolute max temp of the voice coil (*C)
+    t_limit:  absolute max temp of the voice coil (*C)
 
     Borrows the handle to the control interface to do calculations.
 */
+#[derive(Debug, Default)]
+pub struct SpeakerState {
+    t_coil: f64,
+    t_magnet: f64,
+
+    t_coil_hyst: f32,
+    t_magnet_hyst: f32,
+
+    min_gain: f32,
+    gain: f32,
+}
+
 pub struct Speaker {
-    name: String,
+    pub name: String,
+    pub group: usize,
     alsa_iface: Mixer,
     tau_coil: f32,
     tau_magnet: f32,
     tr_coil: f32,
-    temp_limit: f32,
-    vs_chan: i64,
-    is_chan: i64,
+    tr_magnet: f32,
+    t_limit: f32,
+    t_headroom: f32,
+    z_nominal: f32,
+    is_scale: f32,
+    vs_scale: f32,
+    is_chan: usize,
+    vs_chan: usize,
+
+    g: Globals,
+    s: SpeakerState,
 }
 
+impl Speaker {
+    pub fn new(globals: &Globals, name: &str, config: &Ini, ctl: &Ctl) -> Speaker {
+        info!("Speaker [{}]:", name);
 
-pub trait SafetyMonitor {
-    fn new(driver_name: &str, config: &Ini, card: &Ctl) -> Self;
-    fn power_now(&mut self, vs: &[i16], is: &[i16]) -> f32;
-    fn run(&mut self, card: &Ctl, buf: &[i16; 128 * 6 * 2]);
-}
+        let section = "Speaker/".to_owned() + name;
+        let mut new_speaker: Speaker = Speaker {
+            name: name.to_string(),
+            alsa_iface: Mixer::new(&name, ctl),
+            group: helpers::parse_int(config, &section, "group"),
+            tau_coil: helpers::parse_float(config, &section, "tau_coil"),
+            tau_magnet: helpers::parse_float(config, &section, "tau_magnet"),
+            tr_coil: helpers::parse_float(config, &section, "tr_coil"),
+            tr_magnet: helpers::parse_float(config, &section, "tr_magnet"),
+            t_limit: helpers::parse_float(config, &section, "t_limit"),
+            t_headroom: helpers::parse_float(config, &section, "t_headroom"),
+            z_nominal: helpers::parse_float(config, &section, "z_nominal"),
+            is_scale: helpers::parse_float(config, &section, "is_scale"),
+            vs_scale: helpers::parse_float(config, &section, "vs_scale"),
+            is_chan: helpers::parse_int(config, &section, "is_chan"),
+            vs_chan: helpers::parse_int(config, &section, "vs_chan"),
+            g: *globals,
+            s: Default::default(),
+        };
 
-impl SafetyMonitor for Speaker {
-    fn new(driver_name: &str, config: &Ini, card: &Ctl) -> Speaker {
-        let new_speaker: Speaker = { Speaker {
-            name: driver_name.to_string(),
-            alsa_iface: ALSACtl::new(&driver_name, card),
-            tau_coil: helpers::parse_float(config, driver_name, "tau_coil"),
-            tau_magnet: helpers::parse_float(config, driver_name, "tau_magnet"),
-            tr_coil: helpers::parse_float(config, driver_name, "tr_coil"),
-            temp_limit: helpers::parse_float(config, driver_name, "temp_limit"),
-            vs_chan: helpers::parse_int(config, driver_name, "vs_chan"),
-            is_chan: helpers::parse_int(config, driver_name, "is_chan"),
+        let s = &mut new_speaker.s;
 
-        }};
+        // Worst case startup assumption
+        s.t_coil = (new_speaker.t_limit - new_speaker.t_headroom) as f64;
+        s.t_magnet = s.t_coil
+            * (new_speaker.tr_magnet / (new_speaker.tr_magnet + new_speaker.tr_coil)) as f64;
 
-        return new_speaker;
+        //         s.t_coil = globals.t_ambient as f64;
+        //         s.t_magnet = globals.t_ambient as f64;
+
+        let max_dt = new_speaker.t_limit - new_speaker.t_headroom - globals.t_ambient;
+        let max_pwr = max_dt / (new_speaker.tr_magnet + new_speaker.tr_coil);
+
+        let amp_gain = new_speaker.alsa_iface.get_amp_gain(ctl);
+
+        // Worst-case peak power is 2x RMS power
+        let peak_pwr = 10f32.powf(amp_gain / 10.) / new_speaker.z_nominal * 2.;
+
+        s.min_gain = ((max_pwr / peak_pwr).log10() * 10.).min(0.);
+
+        assert!(new_speaker.is_chan < globals.channels);
+        assert!(new_speaker.vs_chan < globals.channels);
+        assert!(new_speaker.t_limit - new_speaker.t_headroom > globals.t_safe_max);
+
+        info!("  Group: {}", new_speaker.group);
+        info!("  Max temperature: {:.1} °C", new_speaker.t_limit);
+        info!("  Amp gain: {} dBV", amp_gain);
+        info!("  Max power: {:.2} W", max_pwr);
+        info!("  Peak power: {} W", peak_pwr);
+        info!("  Min gain: {:.2} dB", s.min_gain);
+
+        new_speaker
     }
 
-    fn power_now(&mut self, vs: &[i16], is: &[i16]) -> f32 {
-        let v_avg: f32 = helpers::average(vs) * (14 / (2 ^ 15)) as f32;
-        let i_avg: f32 = helpers::average(is) * (3.75 / (2 ^ 15) as f32) as f32;
+    pub fn run_model(&mut self, buf: &[i16], sample_rate: f32) -> f32 {
+        let s = &mut self.s;
 
-        return v_avg * i_avg;
+        let step = 1. / sample_rate;
+        let alpha_coil = (step / (self.tau_coil + step)) as f64;
+        let alpha_magnet = (step / (self.tau_magnet + step)) as f64;
+
+        let mut pwr_sum = 0f32;
+
+        for sample in buf.chunks(self.g.channels) {
+            assert!(sample.len() == self.g.channels);
+
+            let v = sample[self.vs_chan] as f32 / 32768.0 * self.vs_scale;
+            let i = sample[self.is_chan] as f32 / 32768.0 * self.is_scale;
+            let p = v * i;
+
+            let t_coil_target = s.t_magnet + (p * self.tr_coil) as f64;
+            let t_magnet_target = (self.g.t_ambient + p * self.tr_magnet) as f64;
+
+            s.t_coil = t_coil_target * alpha_coil + s.t_coil * (1. - alpha_coil);
+            s.t_magnet = t_magnet_target * alpha_magnet + s.t_magnet * (1. - alpha_magnet);
+
+            if s.t_coil > self.t_limit as f64 {
+                panic!(
+                    "{}: Coil temperature limit exceeded ({} > {})",
+                    self.name, s.t_coil, self.t_limit
+                );
+            }
+            if s.t_magnet > self.t_limit as f64 {
+                panic!(
+                    "{}: Magnet temperature limit exceeded ({} > {})",
+                    self.name, s.t_magnet, self.t_limit
+                );
+            }
+
+            pwr_sum += p;
+        }
+
+        let pwr_avg: f32 = pwr_sum / ((buf.len() / self.g.channels) as f32);
+
+        s.t_coil_hyst = s
+            .t_coil_hyst
+            .max(s.t_coil as f32)
+            .min(s.t_coil as f32 + self.g.t_hysteresis);
+        s.t_magnet_hyst = s
+            .t_magnet_hyst
+            .max(s.t_magnet as f32)
+            .min(s.t_magnet as f32 + self.g.t_hysteresis);
+
+        let temp = s.t_coil_hyst.max(s.t_magnet_hyst);
+
+        let reduction =
+            (temp - self.g.t_safe_max) / (self.t_limit - self.t_headroom - self.g.t_safe_max);
+        let gain = s.min_gain * reduction.max(0.);
+
+        s.gain = gain;
+
+        debug!(
+            "{}: Coil {:.2} °C Magnet {:.2} °C Power {:.2} W Gain {:.2} dB",
+            self.name, s.t_coil, s.t_magnet, pwr_avg, gain
+        );
+
+        if s.gain > -0.01 {
+            s.gain = 0.;
+        }
+
+        s.gain
     }
 
-    // I'm not sure on the maths here for determining when to start dropping the volume.
-    fn run(&mut self, card: &Ctl, buf: &[i16; 128 * 6 * 2]) {
-        let lvl: f32 = self.alsa_iface.get_lvl(card);
-        let vsense = &buf[(128 * self.vs_chan) as usize .. (128 * (self.vs_chan + 1) - 1) as usize];
-        let isense = &buf[(128 * self.is_chan) as usize .. (128 * (self.is_chan + 1) - 1) as usize];
-
-        // Estimate temperature of VC and magnet
-        let temp0: f32 = 35f32;
-        let mut temp_vc: f32 = temp0;
-        let mut temp_magnet: f32 = temp0;
-        let alpha_vc: f32 = 0.01 / (temp_vc + 0.01);
-        let alpha_magnet: f32 = 0.01 / (temp_magnet + 0.01);
-
-        // Power through the voice coil (average of most recent 128 samples)
-        let pwr: f32 = self.power_now(&vsense, &isense);
-        println!("Power now is {:.2} mW", pwr);
-
-        let vc_target: f32 = temp_magnet + pwr * self.tau_coil;
-        temp_vc = vc_target * alpha_vc + temp_vc * (1.0 - alpha_vc);
-        println!("Current voice coil temp: {:.2} *C", temp_vc);
-
-        let magnet_target: f32 = temp0 + pwr * self.tau_magnet;
-        temp_magnet = magnet_target  * alpha_magnet + temp_magnet * (1.0 - alpha_magnet);
-        println!("Current magnet temp: {:.2} *C", temp_magnet);
-
-        if temp_vc < self.temp_limit {
-            println!("Voice coil for {} below temp limit, ramping back up.", self.name);
-            // For every degree below temp_limit, raise level by 0.5 dB
-            let new_lvl: f32 = lvl + ((self.temp_limit - temp_vc) * 0.5);
-            self.alsa_iface.set_lvl(card, new_lvl);
-        }
-
-        if temp_vc > (self.temp_limit - 15f32) {
-            println!("Voice coil at {}*C on {}! Dropping volume!", temp_vc, self.name);
-            // For every degree above temp_limit, drop the level by 1.5 dB
-            let new_lvl: f32 = lvl - ((temp_vc - (self.temp_limit - 15f32)) * 1.5);
-            self.alsa_iface.set_lvl(card, new_lvl);
-        }
-
-        println!("Volume on {} is now {} dB", self.name, self.alsa_iface.get_lvl(card));
+    pub fn update(&mut self, ctl: &Ctl, gain: f32) {
+        self.alsa_iface.set_lvl(ctl, gain);
     }
 }
