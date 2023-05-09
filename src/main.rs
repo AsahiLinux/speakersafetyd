@@ -137,8 +137,7 @@ fn main() {
 
     let pcm_name = format!("{},{}", device, globals.visense_pcm);
     // Set up PCM to buffer in V/ISENSE
-    let pcm: alsa::pcm::PCM =
-        helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 48000);
+    let pcm: alsa::pcm::PCM = helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0);
     let mut buf = Vec::new();
     buf.resize(globals.period * globals.channels, 0i16);
 

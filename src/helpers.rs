@@ -40,10 +40,18 @@ pub fn open_card(card: &str) -> alsa::ctl::Ctl {
     return ctldev;
 }
 
-pub fn open_pcm(dev: &str, chans: u32, sample_rate: u32) -> alsa::pcm::PCM {
+pub fn open_pcm(dev: &str, chans: u32, mut sample_rate: u32) -> alsa::pcm::PCM {
     let pcm = alsa::pcm::PCM::new(dev, alsa::Direction::Capture, false).unwrap();
     {
         let params = alsa::pcm::HwParams::any(&pcm).unwrap();
+
+        let rate_max = params.get_rate_max().unwrap();
+        let rate_min = params.get_rate_min().unwrap();
+        println!("PCM rate: {}..{}", rate_min, rate_max);
+
+        if sample_rate == 0 {
+            sample_rate = rate_min;
+        }
 
         params.set_channels(chans).unwrap();
         params
