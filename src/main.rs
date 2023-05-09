@@ -144,14 +144,29 @@ fn main() {
     let io = pcm.io_i16().unwrap();
 
     let hwp = pcm.hw_params_current().unwrap();
-    let sample_rate = hwp.get_rate().unwrap();
 
-    info!("Sample rate: {}", sample_rate);
+    let mut sample_rate_elem = types::Elem::new(
+        "Speaker Sample Rate".to_string(),
+        &ctl,
+        alsa::ctl::ElemType::Integer,
+    );
+    let mut sample_rate = sample_rate_elem.read_int(&ctl);
 
     loop {
         // Block while we're reading into the buffer
         io.readi(&mut buf).unwrap();
 
+        let cur_sample_rate = sample_rate_elem.read_int(&ctl);
+
+        if cur_sample_rate != 0 {
+            sample_rate = cur_sample_rate;
+        }
+
+        if (sample_rate == 0) {
+            panic!("Invalid sample rate");
+        }
+
+        info!("Sample rate: {}", sample_rate);
         for (idx, group) in groups.iter_mut() {
             let gain = group
                 .speakers

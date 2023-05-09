@@ -14,14 +14,14 @@ use crate::helpers;
     The val field is created using a wrapper so that we can handle
     any errors.
 */
-struct Elem {
+pub struct Elem {
     elem_name: String,
     id: alsa::ctl::ElemId,
     val: alsa::ctl::ElemValue,
 }
 
 impl Elem {
-    fn new(name: String, card: &Ctl, t: alsa::ctl::ElemType) -> Elem {
+    pub fn new(name: String, card: &Ctl, t: alsa::ctl::ElemType) -> Elem {
         // CString::new() cannot borrow a String. We want name for the elem
         // for error identification though, so it can't consume name directly.
         let borrow: String = name.clone();
@@ -42,6 +42,14 @@ impl Elem {
         helpers::read_ev(card, &mut new_elem.val, &new_elem.elem_name);
 
         return new_elem;
+    }
+
+    pub fn read_int(&mut self, card: &Ctl) -> i32 {
+        helpers::read_ev(card, &mut self.val, &self.elem_name);
+
+        self.val
+            .get_integer(0)
+            .expect(&format!("Could not read {}", self.elem_name))
     }
 }
 
