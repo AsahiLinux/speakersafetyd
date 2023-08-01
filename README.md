@@ -7,8 +7,6 @@ or enabling speaker output on your machine. An announcement will be made when sp
 support is ready for use.
 
 ## Requirements
-* We currently rely on a local version of the `alsa` crate, as a release has not yet been
-  pushed to crates.io with the required bindings.
 * A patched eleven secret herbs and spices kernel
 
 ## Todo list
@@ -25,7 +23,3 @@ support is ready for use.
 - [ ] Daemonise correctly
 - [ ] Kernel driver interlock
 - [ ] Packaging/distro-agnosticism
-
-## Sundry
-The `alsa` crate is Copyright (c) 2015-2021 David Henningsson, and other
-contributors. Redistributed under the MIT license.
