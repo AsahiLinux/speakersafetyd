@@ -39,6 +39,7 @@ impl Elem {
 
         new_elem.id.set_name(cstr);
         new_elem.val.set_id(&new_elem.id);
+        helpers::lock_el(card, &new_elem.id, &new_elem.elem_name);
         helpers::read_ev(card, &mut new_elem.val, &new_elem.elem_name);
 
         return new_elem;
