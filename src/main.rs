@@ -194,6 +194,8 @@ fn main() {
             if gain != group.gain {
                 if group.gain == 0. {
                     warn!("Speaker group {} gain limited to {}", idx, gain);
+                } else if gain == 0. {
+                    info!("Speaker group {} gain nominal", idx);
                 }
                 group.speakers.iter_mut().for_each(|s| s.update(&ctl, gain));
                 group.gain = gain;
