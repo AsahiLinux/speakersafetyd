@@ -162,6 +162,11 @@ fn main() {
 
     unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
 
+    for (idx, group) in groups.iter_mut() {
+        group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));
+        group.gain = 0.0;
+    }
+
     loop {
         // Block while we're reading into the buffer
         io.readi(&mut buf).unwrap();
