@@ -150,6 +150,24 @@ pub fn write_ev(card: &alsa::ctl::Ctl, ev: &alsa::ctl::ElemValue, name: &str) {
     };
 }
 
+/**
+    Wrapper for alsa::ctl::Ctl::elem_read().
+*/
+pub fn lock_el(card: &alsa::ctl::Ctl, el: &alsa::ctl::ElemId, name: &str) {
+    let _val = match card.elem_lock(el) {
+        // alsa:Result<()>
+        Ok(val) => val,
+        Err(e) => {
+            println!(
+                "Could not lock elem {}. alsa-lib error: {:?}",
+                name, e
+            );
+            fail();
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn int_to_db(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: i32) -> MilliBel {
     let db = match card.convert_to_db(id, val.into()) {
         Ok(inner) => inner,
