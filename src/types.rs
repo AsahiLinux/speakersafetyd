@@ -52,6 +52,13 @@ impl Elem {
             .get_integer(0)
             .expect(&format!("Could not read {}", self.elem_name))
     }
+
+    pub fn write_int(&mut self, card: &Ctl, value: i32) {
+        self.val
+            .set_integer(0, value)
+            .expect(&format!("Could not set {}", self.elem_name));
+        helpers::write_ev(card, &mut self.val, &self.elem_name);
+    }
 }
 
 /**
