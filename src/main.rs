@@ -174,14 +174,16 @@ fn main() {
         let cur_sample_rate = sample_rate_elem.read_int(&ctl);
 
         if cur_sample_rate != 0 {
-            sample_rate = cur_sample_rate;
+            if cur_sample_rate != sample_rate {
+                sample_rate = cur_sample_rate;
+                info!("Sample rate: {}", sample_rate);
+            }
         }
 
-        if (sample_rate == 0) {
+        if sample_rate == 0 {
             panic!("Invalid sample rate");
         }
 
-        info!("Sample rate: {}", sample_rate);
         for (idx, group) in groups.iter_mut() {
             let gain = group
                 .speakers
