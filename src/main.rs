@@ -26,6 +26,8 @@ static VERSION: &str = "0.0.1";
 
 const DEFAULT_CONFIG_PATH: &str = "share/speakersafetyd";
 
+const UNLOCK_MAGIC: i32 = 0xdec1be15u32 as i32;
+
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -152,6 +154,14 @@ fn main() {
     );
     let mut sample_rate = sample_rate_elem.read_int(&ctl);
 
+    let mut unlock_elem = types::Elem::new(
+        "Speaker Volume Unlock".to_string(),
+        &ctl,
+        alsa::ctl::ElemType::Integer,
+    );
+
+    unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
+
     loop {
         // Block while we're reading into the buffer
         io.readi(&mut buf).unwrap();
@@ -182,5 +192,7 @@ fn main() {
                 group.gain = gain;
             }
         }
+
+        unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
     }
 }
