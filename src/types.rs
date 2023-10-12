@@ -354,6 +354,24 @@ impl Speaker {
         s.gain
     }
 
+    pub fn skip_model(&mut self, time: f64) {
+        let s = &mut self.s;
+        let t_coil = s.t_coil - self.g.t_ambient as f64;
+        let t_magnet = s.t_magnet - self.g.t_ambient as f64;
+
+        let eta = 1f64 / (1f64 - (self.tau_coil / self.tau_magnet) as f64);
+        let a = (-time / self.tau_coil as f64).exp() * (t_coil - eta * t_magnet);
+        let b = (-time / self.tau_magnet as f64).exp() * t_magnet;
+
+        s.t_coil = self.g.t_ambient as f64 + a + b * eta;
+        s.t_magnet = self.g.t_ambient as f64 + b;
+
+        debug!(
+            "{}: SKIP: Coil {:.2} °C Magnet {:.2} °C ({:.2} seconds)",
+            self.name, s.t_coil, s.t_magnet, time
+        );
+    }
+
     pub fn update(&mut self, ctl: &Ctl, gain: f32) {
         self.alsa_iface.set_lvl(ctl, gain);
     }

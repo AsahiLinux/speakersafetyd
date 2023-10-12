@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use std::fs::read_to_string;
 use std::io;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use std::{thread::sleep, time};
 
 use clap::Parser;
@@ -167,6 +168,8 @@ fn main() {
         group.gain = 0.0;
     }
 
+    let mut last_update = Instant::now();
+
     loop {
         // Block while we're reading into the buffer
         io.readi(&mut buf).unwrap();
@@ -183,6 +186,22 @@ fn main() {
         if sample_rate == 0 {
             panic!("Invalid sample rate");
         }
+
+        let now = Instant::now();
+        let dt = (now - last_update).as_secs_f64();
+        assert!(dt > 0f64);
+
+        let pt = globals.period as f64 / sample_rate as f64;
+        /* If we skipped at least 4 periods, run catchup for that minus one */
+        if dt > (4f64 * pt) {
+            let skip = dt - pt;
+            debug!("Skipping {:.2} seconds", skip);
+            for (_, group) in groups.iter_mut() {
+                group.speakers.iter_mut().for_each(|s| s.skip_model(skip));
+            }
+        }
+
+        last_update = now;
 
         for (idx, group) in groups.iter_mut() {
             let gain = group
