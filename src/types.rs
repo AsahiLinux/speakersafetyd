@@ -254,8 +254,9 @@ impl Speaker {
 
         // Worst case startup assumption
         s.t_coil = (new_speaker.t_limit - new_speaker.t_headroom) as f64;
-        s.t_magnet = s.t_coil
-            * (new_speaker.tr_magnet / (new_speaker.tr_magnet + new_speaker.tr_coil)) as f64;
+        s.t_magnet = globals.t_ambient as f64
+            + (s.t_coil - globals.t_ambient as f64)
+                * (new_speaker.tr_magnet / (new_speaker.tr_magnet + new_speaker.tr_coil)) as f64;
 
         //         s.t_coil = globals.t_ambient as f64;
         //         s.t_magnet = globals.t_ambient as f64;
