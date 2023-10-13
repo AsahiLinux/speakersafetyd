@@ -45,7 +45,7 @@ struct Options {
 }
 
 fn get_machine() -> String {
-    read_to_string("/proc/device-tree/compatible")
+    fs::read_to_string("/proc/device-tree/compatible")
         .expect("Could not read device tree compatible")
         .strip_prefix("apple,")
         .expect("Unexpected compatible format")
