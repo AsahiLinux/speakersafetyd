@@ -47,8 +47,6 @@ struct Options {
 fn get_machine() -> String {
     fs::read_to_string("/proc/device-tree/compatible")
         .expect("Could not read device tree compatible")
-        .strip_prefix("apple,")
-        .expect("Unexpected compatible format")
         .split_once("\0")
         .expect("Unexpected compatible format")
         .0
@@ -97,9 +95,14 @@ fn main() {
     });
     info!("Config base: {:?}", config_path);
 
-    let model: String = get_machine();
-    info!("Model: {}", model);
+    let machine: String = get_machine();
+    info!("Machine: {}", machine);
 
+    let (maker, model) = machine
+        .split_once(",")
+        .expect("Unexpected machine name format");
+
+    config_path.push(&maker);
     config_path.push(&model);
     config_path.set_extension("conf");
     info!("Config file: {:?}", config_path);
