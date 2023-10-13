@@ -8,22 +8,18 @@
 */
 use std::collections::BTreeMap;
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
-use std::{thread::sleep, time};
+use std::time::Instant;
 
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use configparser::ini::Ini;
 use log;
-use log::{debug, error, info, trace, warn};
+use log::{debug, info, warn};
 use simple_logger::SimpleLogger;
 
 mod helpers;
 mod types;
-
-static VERSION: &str = "0.0.1";
 
 const DEFAULT_CONFIG_PATH: &str = "share/speakersafetyd";
 
@@ -173,8 +169,6 @@ fn main() {
 
     let io = pcm.io_i16().unwrap();
 
-    let hwp = pcm.hw_params_current().unwrap();
-
     let mut sample_rate_elem = types::Elem::new(
         "Speaker Sample Rate".to_string(),
         &ctl,
@@ -190,7 +184,7 @@ fn main() {
 
     unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
 
-    for (idx, group) in groups.iter_mut() {
+    for (_idx, group) in groups.iter_mut() {
         if cold_boot {
             // Preset the gains to no reduction on cold boot
             group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));

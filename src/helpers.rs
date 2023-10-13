@@ -15,18 +15,6 @@ pub fn fail() {
     std::process::exit(1);
 }
 
-pub fn average(a: &[i16]) -> f32 {
-    let mut sum: f32 = 0.0;
-    let mut avg: f32 = 0.0;
-    for i in a {
-        sum = sum + *i as f32;
-    }
-
-    avg = sum / (a.len() as f32);
-
-    return avg;
-}
-
 pub fn open_card(card: &str) -> alsa::ctl::Ctl {
     let ctldev: alsa::ctl::Ctl = match alsa::ctl::Ctl::new(card, false) {
         Ok(ctldev) => ctldev,
@@ -158,10 +146,7 @@ pub fn lock_el(card: &alsa::ctl::Ctl, el: &alsa::ctl::ElemId, name: &str) {
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
-            println!(
-                "Could not lock elem {}. alsa-lib error: {:?}",
-                name, e
-            );
+            println!("Could not lock elem {}. alsa-lib error: {:?}", name, e);
             fail();
             std::process::exit(1);
         }

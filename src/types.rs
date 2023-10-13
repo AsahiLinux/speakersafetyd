@@ -3,7 +3,7 @@
 
 use alsa::ctl::Ctl;
 use configparser::ini::Ini;
-use log::{debug, error, info, trace, warn};
+use log::{debug, info};
 use std::ffi::{CStr, CString};
 
 use crate::helpers;
@@ -128,6 +128,7 @@ impl Mixer {
         helpers::int_to_db(card, &self.amp_gain.id, val).to_db()
     }
 
+    /*
     fn get_lvl(&mut self, card: &Ctl) -> f32 {
         helpers::read_ev(card, &mut self.level.val, &self.level.elem_name);
 
@@ -139,6 +140,7 @@ impl Mixer {
 
         helpers::int_to_db(card, &self.level.id, val).to_db()
     }
+    */
 
     fn set_lvl(&mut self, card: &Ctl, lvl: f32) {
         let new_val: i32 = helpers::db_to_int(card, &self.level.id, lvl);
