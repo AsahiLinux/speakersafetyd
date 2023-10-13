@@ -242,10 +242,10 @@ fn main() {
                 .reduce(f32::min)
                 .unwrap();
             if gain != group.gain {
-                if group.gain == 0. {
-                    warn!("Speaker group {} gain limited to {}", idx, gain);
-                } else if gain == 0. {
+                if gain == 0. {
                     info!("Speaker group {} gain nominal", idx);
+                } else {
+                    info!("Speaker group {} gain limited to {:.2} dBFS", idx, gain);
                 }
                 group.speakers.iter_mut().for_each(|s| s.update(&ctl, gain));
                 group.gain = gain;
