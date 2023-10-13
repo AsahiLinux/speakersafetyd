@@ -227,7 +227,7 @@ pub struct Speaker {
 }
 
 impl Speaker {
-    pub fn new(globals: &Globals, name: &str, config: &Ini, ctl: &Ctl) -> Speaker {
+    pub fn new(globals: &Globals, name: &str, config: &Ini, ctl: &Ctl, cold_boot: bool) -> Speaker {
         info!("Speaker [{}]:", name);
 
         let section = "Speaker/".to_owned() + name;
@@ -252,14 +252,16 @@ impl Speaker {
 
         let s = &mut new_speaker.s;
 
-        // Worst case startup assumption
-        s.t_coil = (new_speaker.t_limit - new_speaker.t_headroom) as f64;
+        s.t_coil = if cold_boot {
+            // Assume warm but not warm enough to limit
+            globals.t_safe_max as f64 - 1f64
+        } else {
+            // Worst case startup assumption
+            (new_speaker.t_limit - new_speaker.t_headroom) as f64
+        };
         s.t_magnet = globals.t_ambient as f64
             + (s.t_coil - globals.t_ambient as f64)
                 * (new_speaker.tr_magnet / (new_speaker.tr_magnet + new_speaker.tr_coil)) as f64;
-
-        //         s.t_coil = globals.t_ambient as f64;
-        //         s.t_magnet = globals.t_ambient as f64;
 
         let max_dt = new_speaker.t_limit - new_speaker.t_headroom - globals.t_ambient;
         let max_pwr = max_dt / (new_speaker.tr_magnet + new_speaker.tr_coil);

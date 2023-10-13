@@ -7,9 +7,9 @@
     we gracefully bail and use an IOCTL to shut off the speakers.
 */
 use std::collections::BTreeMap;
-use std::fs::read_to_string;
+use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use std::{thread::sleep, time};
 
@@ -28,6 +28,8 @@ static VERSION: &str = "0.0.1";
 const DEFAULT_CONFIG_PATH: &str = "share/speakersafetyd";
 
 const UNLOCK_MAGIC: i32 = 0xdec1be15u32 as i32;
+
+const FLAGFILE: &str = "/run/speakersafetyd.flag";
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -117,10 +119,32 @@ fn main() {
     info!("Opening control device");
     let ctl: alsa::ctl::Ctl = helpers::open_card(&device);
 
+    let flag_path = Path::new(FLAGFILE);
+
+    let cold_boot = match flag_path.try_exists() {
+        Ok(true) => {
+            info!("Startup mode: Warm boot");
+            false
+        }
+        Ok(false) => {
+            info!("Startup mode: Cold boot");
+            if fs::write(flag_path, b"started").is_err() {
+                warn!("Failed to write flag file, continuing as warm boot");
+                false
+            } else {
+                true
+            }
+        }
+        Err(_) => {
+            warn!("Failed to test flag file, continuing as warm boot");
+            false
+        }
+    };
+
     let mut groups: BTreeMap<usize, SpeakerGroup> = BTreeMap::new();
 
     for i in speaker_names {
-        let speaker: types::Speaker = types::Speaker::new(&globals, &i, &cfg, &ctl);
+        let speaker: types::Speaker = types::Speaker::new(&globals, &i, &cfg, &ctl, cold_boot);
 
         groups
             .entry(speaker.group)
@@ -164,8 +188,15 @@ fn main() {
     unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
 
     for (idx, group) in groups.iter_mut() {
-        group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));
-        group.gain = 0.0;
+        if cold_boot {
+            // Preset the gains to no reduction on cold boot
+            group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));
+            group.gain = 0.0;
+        } else {
+            // Leave the gains at whatever the kernel limit is, use anything
+            // random for group.gain so the gains will update on the first cycle.
+            group.gain = -999.0;
+        }
     }
 
     let mut last_update = Instant::now();
