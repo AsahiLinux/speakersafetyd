@@ -78,9 +78,9 @@ struct Mixer {
 
 impl Mixer {
     // TODO: implement turning on V/ISENSE
-    fn new(name: &str, card: &Ctl) -> Mixer {
+    fn new(name: &str, card: &Ctl, globals: &Globals) -> Mixer {
         let mut vs = Elem::new(
-            name.to_owned() + " VSENSE Switch",
+            name.to_owned() + " " + &globals.ctl_vsense,
             card,
             alsa::ctl::ElemType::Boolean,
         );
@@ -91,7 +91,7 @@ impl Mixer {
         assert!(vs.val.get_boolean(0).unwrap());
 
         let mut is = Elem::new(
-            name.to_owned() + " ISENSE Switch",
+            name.to_owned() + " " + &globals.ctl_isense,
             card,
             alsa::ctl::ElemType::Boolean,
         );
@@ -104,12 +104,12 @@ impl Mixer {
         Mixer {
             drv: name.to_owned(),
             level: Elem::new(
-                name.to_owned() + " Speaker Volume",
+                name.to_owned() + " " + &globals.ctl_volume,
                 card,
                 alsa::ctl::ElemType::Integer,
             ),
             amp_gain: Elem::new(
-                name.to_owned() + " Amp Gain Volume",
+                name.to_owned() + " " + &globals.ctl_amp_gain,
                 card,
                 alsa::ctl::ElemType::Integer,
             ),
@@ -158,7 +158,7 @@ impl Mixer {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Globals {
     pub visense_pcm: usize,
     pub channels: usize,
@@ -166,6 +166,10 @@ pub struct Globals {
     pub t_ambient: f32,
     pub t_safe_max: f32,
     pub t_hysteresis: f32,
+    pub ctl_vsense: String,
+    pub ctl_isense: String,
+    pub ctl_amp_gain: String,
+    pub ctl_volume: String,
 }
 
 impl Globals {
@@ -177,6 +181,10 @@ impl Globals {
             t_ambient: helpers::parse_float(config, "Globals", "t_ambient"),
             t_safe_max: helpers::parse_float(config, "Globals", "t_safe_max"),
             t_hysteresis: helpers::parse_float(config, "Globals", "t_hysteresis"),
+            ctl_vsense: helpers::parse_string(config, "Controls", "vsense"),
+            ctl_isense: helpers::parse_string(config, "Controls", "isense"),
+            ctl_amp_gain: helpers::parse_string(config, "Controls", "amp_gain"),
+            ctl_volume: helpers::parse_string(config, "Controls", "volume"),
         }
     }
 }
@@ -235,7 +243,7 @@ impl Speaker {
         let section = "Speaker/".to_owned() + name;
         let mut new_speaker: Speaker = Speaker {
             name: name.to_string(),
-            alsa_iface: Mixer::new(&name, ctl),
+            alsa_iface: Mixer::new(&name, ctl, globals),
             group: helpers::parse_int(config, &section, "group"),
             tau_coil: helpers::parse_float(config, &section, "tau_coil"),
             tau_magnet: helpers::parse_float(config, &section, "tau_magnet"),
@@ -248,7 +256,7 @@ impl Speaker {
             vs_scale: helpers::parse_float(config, &section, "vs_scale"),
             is_chan: helpers::parse_int(config, &section, "is_chan"),
             vs_chan: helpers::parse_int(config, &section, "vs_chan"),
-            g: *globals,
+            g: globals.clone(),
             s: Default::default(),
         };
 

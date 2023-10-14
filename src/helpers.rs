@@ -86,6 +86,17 @@ pub fn parse_float(config: &Ini, section: &str, key: &str) -> f32 {
 }
 
 /**
+    Wrapper around configparser::ini::Ini.getfloat()
+    to safely unwrap the Result<Option<f64>, E> returned by
+    it.
+*/
+pub fn parse_string(config: &Ini, section: &str, key: &str) -> String {
+    config
+        .get(section, key)
+        .expect(&format!("{}/{}: Missing key", section, key))
+}
+
+/**
     Wrapper around alsa::ctl::ElemValue::new(). Lets us bail on errors and
     pass in the Bytes type for V/ISENSE
 */
