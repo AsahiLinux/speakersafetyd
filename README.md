@@ -19,7 +19,6 @@ support is ready for use.
 - [x] Model of voice coil/magnet temperatures
 - [x] Ramping volume according to safety model
 - [x] Tolerate multiple sample rates
-- [ ] Sleep reliably while playback has stopped
-- [ ] Daemonise correctly
-- [ ] Kernel driver interlock
+- [x] Sleep reliably while playback has stopped
+- [x] Kernel driver interlock
 - [ ] Packaging/distro-agnosticism
