@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "Speaker protection daemon for embedded Linux systems"
+repository = "https://github.com/AsahiLinux/speakersafetyd/"
 
 [dependencies]
 half = "^2.1.0"
