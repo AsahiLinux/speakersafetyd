@@ -8,8 +8,8 @@ repository = "https://github.com/AsahiLinux/speakersafetyd/"
 
 [dependencies]
 alsa = "^0.8.1"
-configparser = { version = "^3.0.2", features=["indexmap"] }
+configparser = { version = "^2.1.0"}
 clap = { version = "4.1.6", features=["derive"] }
 log = "0.4.17"
 clap-verbosity-flag = "2.0.0"
-simple_logger = "4.0.0"
+simple_logger = "1.16.0"
