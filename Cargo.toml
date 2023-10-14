@@ -1,13 +1,12 @@
 [package]
 name = "speakersafetyd"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 description = "Speaker protection daemon for embedded Linux systems"
 repository = "https://github.com/AsahiLinux/speakersafetyd/"
 
 [dependencies]
-half = "^2.1.0"
 alsa = "^0.8.1"
 configparser = { version = "^3.0.2", features=["indexmap"] }
 clap = { version = "4.1.6", features=["derive"] }
