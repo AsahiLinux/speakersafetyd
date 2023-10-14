@@ -1,0 +1,8 @@
+SUBSYSTEM=="sound", DRIVERS=="snd-soc-macaudio", GOTO="speakersafetyd_macaudio"
+GOTO="speakersafetyd_end"
+
+LABEL="speakersafetyd_macaudio"
+KERNEL=="pcmC*D2c", ATTRS{id}=="J314", TAG+="systemd", ENV{SYSTEMD_WANTS}="speakersafetyd.service"
+KERNEL=="pcmC*D2c", ATTRS{id}=="J413", TAG+="systemd", ENV{SYSTEMD_WANTS}="speakersafetyd.service"
+
+LABEL="speakersafetyd_end"
