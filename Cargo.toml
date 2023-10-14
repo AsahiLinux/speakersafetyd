@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 half = "^2.1.0"
-alsa = "^0.7.1"
+alsa = "^0.8.1"
 configparser = { version = "^3.0.2", features=["indexmap"] }
 clap = { version = "4.1.6", features=["derive"] }
 log = "0.4.17"
