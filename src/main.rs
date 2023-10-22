@@ -17,6 +17,7 @@ use configparser::ini::Ini;
 use log;
 use log::{debug, info, warn};
 use simple_logger::SimpleLogger;
+use alsa::nix::errno::Errno;
 
 mod helpers;
 mod types;
@@ -200,7 +201,21 @@ fn main() {
 
     loop {
         // Block while we're reading into the buffer
-        io.readi(&mut buf).unwrap();
+        io.readi(&mut buf).or_else(|e| {
+            if e.errno() == Errno::ESTRPIPE {
+                // Resume handling
+                loop {
+                    match pcm.resume() {
+                        Ok(_) => break Ok(0),
+                        Err(e) if e.errno() == Errno::EAGAIN => continue,
+                        Err(e) => break Err(e),
+                    }
+                }.unwrap();
+                io.readi(&mut buf)
+            } else {
+                Err(e)
+            }
+        }).unwrap();
 
         let cur_sample_rate = sample_rate_elem.read_int(&ctl);
 
