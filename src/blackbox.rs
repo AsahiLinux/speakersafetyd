@@ -57,8 +57,8 @@ impl Blackbox {
         }
 
         let now = chrono::Local::now().to_rfc3339();
-        let meta_name = self.path.join(now.clone() + ".meta");
-        let data_name = self.path.join(now.clone() + ".raw");
+        let meta_name = self.path.join(now.clone() + ".fdr");
+        let data_name = self.path.join(now.clone() + ".cvr");
 
         warn!("Preserving blackbox {}", now);
 
