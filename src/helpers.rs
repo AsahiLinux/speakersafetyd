@@ -5,23 +5,11 @@ use alsa;
 use alsa::mixer::MilliBel;
 use configparser::ini::Ini;
 
-/**
-    Failsafe: Limit speaker volume massively and bail.
-
-    TODO: enable TAS safe mode with IOCTL.
-*/
-pub fn fail() {
-    println!("A catastrophic error has occurred.");
-    std::process::exit(1);
-}
-
 pub fn open_card(card: &str) -> alsa::ctl::Ctl {
     let ctldev: alsa::ctl::Ctl = match alsa::ctl::Ctl::new(card, false) {
         Ok(ctldev) => ctldev,
         Err(e) => {
-            println!("{}: Could not open sound card! Error: {}", card, e);
-            fail();
-            std::process::exit(1);
+            panic!("{}: Could not open sound card! Error: {}", card, e);
         }
     };
 
@@ -104,9 +92,7 @@ pub fn new_elemvalue(t: alsa::ctl::ElemType) -> alsa::ctl::ElemValue {
     let val = match alsa::ctl::ElemValue::new(t) {
         Ok(val) => val,
         Err(_e) => {
-            println!("Could not open a handle to an element!");
-            fail();
-            std::process::exit(1);
+            panic!("Could not open a handle to an element!");
         }
     };
 
@@ -121,12 +107,10 @@ pub fn read_ev(card: &alsa::ctl::Ctl, ev: &mut alsa::ctl::ElemValue, name: &str)
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
-            println!(
+            panic!(
                 "Could not read elem value {}. alsa-lib error: {:?}",
                 name, e
             );
-            fail();
-            std::process::exit(1);
         }
     };
 }
@@ -139,12 +123,10 @@ pub fn write_ev(card: &alsa::ctl::Ctl, ev: &alsa::ctl::ElemValue, name: &str) {
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
-            println!(
+            panic!(
                 "Could not write elem value {}. alsa-lib error: {:?}",
                 name, e
             );
-            fail();
-            std::process::exit(1);
         }
     };
 }
@@ -157,9 +139,7 @@ pub fn lock_el(card: &alsa::ctl::Ctl, el: &alsa::ctl::ElemId, name: &str) {
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
-            println!("Could not lock elem {}. alsa-lib error: {:?}", name, e);
-            fail();
-            std::process::exit(1);
+            panic!("Could not lock elem {}. alsa-lib error: {:?}", name, e);
         }
     };
 }
@@ -168,12 +148,10 @@ pub fn int_to_db(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: i32) -> Mil
     let db = match card.convert_to_db(id, val.into()) {
         Ok(inner) => inner,
         Err(e) => {
-            println!(
+            panic!(
                 "Could not convert val {} to dB! alsa-lib error: {:?}",
                 val, e
             );
-            fail();
-            std::process::exit(1);
         }
     };
 
@@ -185,12 +163,10 @@ pub fn db_to_int(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: f32) -> i32
     let new_int = match card.convert_from_db(id, mb, alsa::Round::Floor) {
         Ok(inner) => inner as i32,
         Err(e) => {
-            println!(
+            panic!(
                 "Could not convert MilliBel {:?} to int! alsa-lib error: {:?}",
                 val, e
             );
-            fail();
-            std::process::exit(1);
         }
     };
 

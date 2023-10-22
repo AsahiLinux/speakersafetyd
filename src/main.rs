@@ -2,9 +2,10 @@
 // (C) 2022 The Asahi Linux Contributors
 /*!
     Handles speaker safety on Apple Silicon machines. This code is designed to
-    fail safe. The speaker should not be enabled until this daemon has successfully
-    initialised. If at any time we run into an unrecoverable error (we shouldn't),
-    we gracefully bail and use an IOCTL to shut off the speakers.
+    fail safe. The kernel keeps the speakers capped at a low volume level until
+    this daemon initializes. If at any time we run into an unrecoverable error
+    or a timeout, we panic and let the kernel put the speakers back into a safe
+    state.
 */
 use std::collections::BTreeMap;
 use std::fs;

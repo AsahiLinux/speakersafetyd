@@ -148,9 +148,7 @@ impl Mixer {
         match self.level.val.set_integer(0, new_val) {
             Some(_) => {}
             None => {
-                println!("Could not set level for {}", self.drv);
-                helpers::fail();
-                std::process::exit(1);
+                panic!("Could not set level for {}", self.drv);
             }
         };
 
