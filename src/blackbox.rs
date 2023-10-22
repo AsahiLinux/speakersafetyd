@@ -84,25 +84,36 @@ impl Blackbox {
             t_ambient: self.globals.t_ambient,
             t_safe_max: self.globals.t_safe_max,
             t_hysteresis: self.globals.t_hysteresis,
-            state: null
+            blocks: null
         };
 
-        let mut state = json::JsonValue::new_array();
+        let mut blocks = json::JsonValue::new_array();
 
-        for group in self.blocks[0].state.iter() {
-            for speaker in group.iter() {
-                let _ = state.push(object! {
-                    t_coil: speaker.t_coil,
-                    t_magnet: speaker.t_magnet,
-                    t_coil_hyst: speaker.t_coil_hyst,
-                    t_magnet_hyst: speaker.t_magnet_hyst,
-                    min_gain: speaker.min_gain,
-                    gain: speaker.gain,
-                });
+        for block in self.blocks.iter() {
+            let mut info = object! {
+                sample_rate: block.sample_rate,
+                sample_count: block.data.len() / self.globals.channels,
+                speakers: null,
+            };
+            let mut speakers = json::JsonValue::new_array();
+
+            for group in self.blocks[0].state.iter() {
+                for speaker in group.iter() {
+                    let _ = speakers.push(object! {
+                        t_coil: speaker.t_coil,
+                        t_magnet: speaker.t_magnet,
+                        t_coil_hyst: speaker.t_coil_hyst,
+                        t_magnet_hyst: speaker.t_magnet_hyst,
+                        min_gain: speaker.min_gain,
+                        gain: speaker.gain,
+                    });
+                }
             }
+            info["speakers"] = speakers;
+            let _ = blocks.push(info);
         }
 
-        meta["state"] = state;
+        meta["blocks"] = blocks;
 
         metafd.write_all(meta.dump().as_bytes())?;
 
