@@ -273,9 +273,9 @@ fn main() {
             last_update = now;
 
             if let Some(bb) = blackbox_ref.as_mut() {
-                let gstates = groups
-                    .iter()
-                    .map(|g| g.1.speakers.iter().map(|s| s.s.clone()).collect())
+                let max_idx = *groups.iter().map(|g| g.0).max().unwrap();
+                let gstates = (0..=max_idx)
+                    .map(|i| groups[&i].speakers.iter().map(|s| s.s.clone()).collect())
                     .collect();
                 bb.push(sample_rate, buf.clone(), gstates);
             }
