@@ -9,17 +9,19 @@
 */
 use std::collections::BTreeMap;
 use std::fs;
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use alsa::nix::errno::Errno;
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use configparser::ini::Ini;
 use log;
 use log::{debug, info, warn};
 use simple_logger::SimpleLogger;
-use alsa::nix::errno::Errno;
 
+mod blackbox;
 mod helpers;
 mod types;
 
@@ -40,6 +42,14 @@ struct Options {
     /// Increase the log level
     #[command(flatten)]
     verbose: Verbosity<InfoLevel>,
+
+    /// Path to the blackbox dump directory
+    #[arg(short, long)]
+    blackbox_path: Option<PathBuf>,
+
+    /// Maximum gain reduction before panicing (for debugging)
+    #[arg(short, long)]
+    max_reduction: Option<f32>,
 }
 
 fn get_machine() -> String {
@@ -113,158 +123,214 @@ fn main() {
 
     let globals = types::Globals::parse(&cfg);
 
-    let speaker_names = get_speakers(&cfg);
-    let speaker_count = speaker_names.len();
-    info!("Found {} speakers", speaker_count);
+    let mut blackbox = args.blackbox_path.map(|p| {
+        info!("Enabling blackbox, path: {:?}", p);
+        blackbox::Blackbox::new(&machine, &p, &globals)
+    });
 
-    info!("Opening control device");
-    let ctl: alsa::ctl::Ctl = helpers::open_card(&device);
+    let mut blackbox_ref = AssertUnwindSafe(&mut blackbox);
+    let result = catch_unwind(move || {
+        let speaker_names = get_speakers(&cfg);
+        let speaker_count = speaker_names.len();
+        info!("Found {} speakers", speaker_count);
 
-    let flag_path = Path::new(FLAGFILE);
+        info!("Opening control device");
+        let ctl: alsa::ctl::Ctl = helpers::open_card(&device);
 
-    let cold_boot = match flag_path.try_exists() {
-        Ok(true) => {
-            info!("Startup mode: Warm boot");
-            false
-        }
-        Ok(false) => {
-            info!("Startup mode: Cold boot");
-            if fs::write(flag_path, b"started").is_err() {
-                warn!("Failed to write flag file, continuing as warm boot");
+        let flag_path = Path::new(FLAGFILE);
+
+        let cold_boot = match flag_path.try_exists() {
+            Ok(true) => {
+                info!("Startup mode: Warm boot");
                 false
-            } else {
-                true
             }
-        }
-        Err(_) => {
-            warn!("Failed to test flag file, continuing as warm boot");
-            false
-        }
-    };
-
-    let mut groups: BTreeMap<usize, SpeakerGroup> = BTreeMap::new();
-
-    for i in speaker_names {
-        let speaker: types::Speaker = types::Speaker::new(&globals, &i, &cfg, &ctl, cold_boot);
-
-        groups
-            .entry(speaker.group)
-            .or_default()
-            .speakers
-            .push(speaker);
-    }
-
-    assert!(
-        groups
-            .values()
-            .map(|a| a.speakers.len())
-            .fold(0, |a, b| a + b)
-            == speaker_count
-    );
-    assert!(2 * speaker_count <= globals.channels);
-
-    let pcm_name = format!("{},{}", device, globals.visense_pcm);
-    // Set up PCM to buffer in V/ISENSE
-    let pcm: alsa::pcm::PCM = helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0);
-    let mut buf = Vec::new();
-    buf.resize(globals.period * globals.channels, 0i16);
-
-    let io = pcm.io_i16().unwrap();
-
-    let mut sample_rate_elem = types::Elem::new(
-        "Speaker Sample Rate".to_string(),
-        &ctl,
-        alsa::ctl::ElemType::Integer,
-    );
-    let mut sample_rate = sample_rate_elem.read_int(&ctl);
-
-    let mut unlock_elem = types::Elem::new(
-        "Speaker Volume Unlock".to_string(),
-        &ctl,
-        alsa::ctl::ElemType::Integer,
-    );
-
-    unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
-
-    for (_idx, group) in groups.iter_mut() {
-        if cold_boot {
-            // Preset the gains to no reduction on cold boot
-            group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));
-            group.gain = 0.0;
-        } else {
-            // Leave the gains at whatever the kernel limit is, use anything
-            // random for group.gain so the gains will update on the first cycle.
-            group.gain = -999.0;
-        }
-    }
-
-    let mut last_update = Instant::now();
-
-    loop {
-        // Block while we're reading into the buffer
-        io.readi(&mut buf).or_else(|e| {
-            if e.errno() == Errno::ESTRPIPE {
-                // Resume handling
-                loop {
-                    match pcm.resume() {
-                        Ok(_) => break Ok(0),
-                        Err(e) if e.errno() == Errno::EAGAIN => continue,
-                        Err(e) => break Err(e),
-                    }
-                }.unwrap();
-                io.readi(&mut buf)
-            } else {
-                Err(e)
-            }
-        }).unwrap();
-
-        let cur_sample_rate = sample_rate_elem.read_int(&ctl);
-
-        if cur_sample_rate != 0 {
-            if cur_sample_rate != sample_rate {
-                sample_rate = cur_sample_rate;
-                info!("Sample rate: {}", sample_rate);
-            }
-        }
-
-        if sample_rate == 0 {
-            panic!("Invalid sample rate");
-        }
-
-        let now = Instant::now();
-        let dt = (now - last_update).as_secs_f64();
-        assert!(dt > 0f64);
-
-        let pt = globals.period as f64 / sample_rate as f64;
-        /* If we skipped at least 4 periods, run catchup for that minus one */
-        if dt > (4f64 * pt) {
-            let skip = dt - pt;
-            debug!("Skipping {:.2} seconds", skip);
-            for (_, group) in groups.iter_mut() {
-                group.speakers.iter_mut().for_each(|s| s.skip_model(skip));
-            }
-        }
-
-        last_update = now;
-
-        for (idx, group) in groups.iter_mut() {
-            let gain = group
-                .speakers
-                .iter_mut()
-                .map(|s| s.run_model(&buf, sample_rate as f32))
-                .reduce(f32::min)
-                .unwrap();
-            if gain != group.gain {
-                if gain == 0. {
-                    info!("Speaker group {} gain nominal", idx);
+            Ok(false) => {
+                info!("Startup mode: Cold boot");
+                if fs::write(flag_path, b"started").is_err() {
+                    warn!("Failed to write flag file, continuing as warm boot");
+                    false
                 } else {
-                    info!("Speaker group {} gain limited to {:.2} dBFS", idx, gain);
+                    true
                 }
-                group.speakers.iter_mut().for_each(|s| s.update(&ctl, gain));
-                group.gain = gain;
             }
+            Err(_) => {
+                warn!("Failed to test flag file, continuing as warm boot");
+                false
+            }
+        };
+
+        let mut groups: BTreeMap<usize, SpeakerGroup> = BTreeMap::new();
+
+        for i in speaker_names {
+            let speaker: types::Speaker = types::Speaker::new(&globals, &i, &cfg, &ctl, cold_boot);
+
+            groups
+                .entry(speaker.group)
+                .or_default()
+                .speakers
+                .push(speaker);
         }
+
+        assert!(
+            groups
+                .values()
+                .map(|a| a.speakers.len())
+                .fold(0, |a, b| a + b)
+                == speaker_count
+        );
+        assert!(2 * speaker_count <= globals.channels);
+
+        let pcm_name = format!("{},{}", device, globals.visense_pcm);
+        // Set up PCM to buffer in V/ISENSE
+        let pcm: alsa::pcm::PCM =
+            helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0);
+        let io = pcm.io_i16().unwrap();
+
+        let mut sample_rate_elem = types::Elem::new(
+            "Speaker Sample Rate".to_string(),
+            &ctl,
+            alsa::ctl::ElemType::Integer,
+        );
+        let mut sample_rate = sample_rate_elem.read_int(&ctl);
+
+        let mut unlock_elem = types::Elem::new(
+            "Speaker Volume Unlock".to_string(),
+            &ctl,
+            alsa::ctl::ElemType::Integer,
+        );
 
         unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
+
+        for (_idx, group) in groups.iter_mut() {
+            if cold_boot {
+                // Preset the gains to no reduction on cold boot
+                group.speakers.iter_mut().for_each(|s| s.update(&ctl, 0.0));
+                group.gain = 0.0;
+            } else {
+                // Leave the gains at whatever the kernel limit is, use anything
+                // random for group.gain so the gains will update on the first cycle.
+                group.gain = -999.0;
+            }
+        }
+
+        let mut last_update = Instant::now();
+
+        let mut buf = Vec::new();
+        buf.resize(globals.period * globals.channels, 0i16);
+
+        let mut once_nominal = false;
+
+        loop {
+            // Block while we're reading into the buffer
+            io.readi(&mut buf)
+                .or_else(|e| {
+                    if e.errno() == Errno::ESTRPIPE {
+                        // Resume handling
+                        loop {
+                            match pcm.resume() {
+                                Ok(_) => break Ok(0),
+                                Err(e) if e.errno() == Errno::EAGAIN => continue,
+                                Err(e) => break Err(e),
+                            }
+                        }
+                        .unwrap();
+                        io.readi(&mut buf)
+                    } else {
+                        Err(e)
+                    }
+                })
+                .unwrap();
+
+            let cur_sample_rate = sample_rate_elem.read_int(&ctl);
+
+            if cur_sample_rate != 0 {
+                if cur_sample_rate != sample_rate {
+                    sample_rate = cur_sample_rate;
+                    info!("Sample rate: {}", sample_rate);
+                    blackbox_ref.as_mut().map(|bb| bb.reset());
+                }
+            }
+
+            if sample_rate == 0 {
+                panic!("Invalid sample rate");
+            }
+
+            let now = Instant::now();
+            let dt = (now - last_update).as_secs_f64();
+            assert!(dt > 0f64);
+
+            let pt = globals.period as f64 / sample_rate as f64;
+            /* If we skipped at least 4 periods, run catchup for that minus one */
+            if dt > (4f64 * pt) {
+                let skip = dt - pt;
+                debug!("Skipping {:.2} seconds", skip);
+                for (_, group) in groups.iter_mut() {
+                    group.speakers.iter_mut().for_each(|s| s.skip_model(skip));
+                }
+                blackbox_ref.as_mut().map(|bb| bb.reset());
+            }
+
+            last_update = now;
+
+            if let Some(bb) = blackbox_ref.as_mut() {
+                let gstates = groups
+                    .iter()
+                    .map(|g| g.1.speakers.iter().map(|s| s.s.clone()).collect())
+                    .collect();
+                bb.push(sample_rate, buf.clone(), gstates);
+            }
+
+            let mut all_nominal = true;
+            for (idx, group) in groups.iter_mut() {
+                let gain = group
+                    .speakers
+                    .iter_mut()
+                    .map(|s| s.run_model(&buf, sample_rate as f32))
+                    .reduce(f32::min)
+                    .unwrap();
+                if gain != group.gain {
+                    if gain == 0. {
+                        info!("Speaker group {} gain nominal", idx);
+                    } else {
+                        info!("Speaker group {} gain limited to {:.2} dBFS", idx, gain);
+                    }
+                    group.speakers.iter_mut().for_each(|s| s.update(&ctl, gain));
+                    group.gain = gain;
+                }
+                if gain != 0. {
+                    all_nominal = false;
+                }
+                if let Some(max_reduction) = args.max_reduction {
+                    if once_nominal && gain < -max_reduction {
+                        panic!("Gain reduction exceeded threshold");
+                    }
+                }
+            }
+
+            if all_nominal {
+                once_nominal = true;
+            }
+
+            unlock_elem.write_int(&ctl, UNLOCK_MAGIC);
+        }
+    });
+    if let Err(e) = result {
+        warn!("Panic!");
+
+        let mut reason: String = "Unknown panic".into();
+
+        if let Some(s) = e.downcast_ref::<&'static str>() {
+            reason = (*s).into();
+        } else if let Some(s) = e.downcast_ref::<String>() {
+            reason = s.clone();
+        }
+
+        blackbox.as_mut().map(|bb| {
+            if bb.preserve(reason).is_err() {
+                warn!("Failed to write blackbox");
+            }
+        });
+
+        resume_unwind(e);
     }
 }

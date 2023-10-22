@@ -202,16 +202,16 @@ impl Globals {
 
     Borrows the handle to the control interface to do calculations.
 */
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct SpeakerState {
-    t_coil: f64,
-    t_magnet: f64,
+    pub t_coil: f64,
+    pub t_magnet: f64,
 
-    t_coil_hyst: f32,
-    t_magnet_hyst: f32,
+    pub t_coil_hyst: f32,
+    pub t_magnet_hyst: f32,
 
-    min_gain: f32,
-    gain: f32,
+    pub min_gain: f32,
+    pub gain: f32,
 }
 
 pub struct Speaker {
@@ -231,7 +231,7 @@ pub struct Speaker {
     vs_chan: usize,
 
     g: Globals,
-    s: SpeakerState,
+    pub s: SpeakerState,
 }
 
 impl Speaker {

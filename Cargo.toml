@@ -13,3 +13,5 @@ clap = { version = "4.1.6", features=["derive"] }
 log = "0.4.17"
 clap-verbosity-flag = "2.0.0"
 simple_logger = "1.16.0"
+chrono = "0.4.31"
+json = "0.12.4"
