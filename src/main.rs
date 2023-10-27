@@ -243,6 +243,11 @@ fn main() {
                     }
                 })
                 .unwrap();
+            if read != globals.period {
+                warn!("Expected {} samples, got {}", globals.period, read);
+            }
+
+            let buf_read = &buf[0..read * globals.channels];
 
             let cur_sample_rate = sample_rate_elem.read_int(&ctl);
 
@@ -280,7 +285,7 @@ fn main() {
                 let gstates = (0..=max_idx)
                     .map(|i| groups[&i].speakers.iter().map(|s| s.s.clone()).collect())
                     .collect();
-                bb.push(sample_rate, buf.clone(), gstates);
+                bb.push(sample_rate, buf_read.to_vec(), gstates);
             }
 
             let mut all_nominal = true;
@@ -288,7 +293,7 @@ fn main() {
                 let gain = group
                     .speakers
                     .iter_mut()
-                    .map(|s| s.run_model(&buf, sample_rate as f32))
+                    .map(|s| s.run_model(buf_read, sample_rate as f32))
                     .reduce(f32::min)
                     .unwrap();
                 if gain != group.gain {
