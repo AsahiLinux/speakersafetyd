@@ -3,7 +3,7 @@ Description=Speaker Protection Daemon
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/speakersafetyd -c /usr/share/speakersafetyd/
+ExecStart=/usr/bin/speakersafetyd -c /usr/share/speakersafetyd/ -b /var/lib/speakersafetyd/blackbox -m 7
 UMask=0066
 Restart=on-failure
 RestartSec=1
