@@ -79,8 +79,14 @@ struct Mixer {
 impl Mixer {
     // TODO: implement turning on V/ISENSE
     fn new(name: &str, card: &Ctl, globals: &Globals) -> Mixer {
+        let prefix = if name == "Mono" {
+            "".to_string()
+        } else {
+            name.to_owned() + " "
+        };
+
         let mut vs = Elem::new(
-            name.to_owned() + " " + &globals.ctl_vsense,
+            prefix.clone() + &globals.ctl_vsense,
             card,
             alsa::ctl::ElemType::Boolean,
         );
@@ -91,7 +97,7 @@ impl Mixer {
         assert!(vs.val.get_boolean(0).unwrap());
 
         let mut is = Elem::new(
-            name.to_owned() + " " + &globals.ctl_isense,
+            prefix.clone() + &globals.ctl_isense,
             card,
             alsa::ctl::ElemType::Boolean,
         );
@@ -104,12 +110,12 @@ impl Mixer {
         Mixer {
             drv: name.to_owned(),
             level: Elem::new(
-                name.to_owned() + " " + &globals.ctl_volume,
+                prefix.clone() + &globals.ctl_volume,
                 card,
                 alsa::ctl::ElemType::Integer,
             ),
             amp_gain: Elem::new(
-                name.to_owned() + " " + &globals.ctl_amp_gain,
+                prefix + &globals.ctl_amp_gain,
                 card,
                 alsa::ctl::ElemType::Integer,
             ),
