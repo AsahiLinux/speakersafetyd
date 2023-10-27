@@ -1,0 +1,20 @@
+Speaker configs
+
+Model   ID      Amp         Gain    Speakers    Sense   Prot
+j180    AID19   sn012776    10      1× 1W+1T    no      atsp
+j274    AID6    tas5770     20      1× 1W       no      atsp
+j293    AID3    tas5770     15      2× 2W       no      atsp
+j313    AID4    tas5770     10      2× 1W       no      atsp
+j314    AID8    sn012776    15      2× 2W+1T    yes     spp3
+j316    AID9    sn012776    15      2× 2W+1T    yes     spp3
+j375    AID10   sn012776    15      1× 1W       no      atsp
+j413    AID13   sn012776    15      2× 1W+1T    yes     spp3
+j414    AID14   sn012776    15      2× 2W+1T    yes     spp3
+j415    AID27   sn012776    15      2× 2W+1T    yes     spp3
+j416    AID15   sn012776    15      2× 2W+1T    yes     spp3
+j456    AID5    ssm3515     15      2× 1W+1T    no      atsp
+j457    AID7    ssm3515     15      2× 1W+1T    no      atsp
+j473    AID12   sn012776    20      1× 1W       no      atsp
+j474    AID26   sn012776    20      1× 1W       no      atsp
+j475    AID25   sn012776    20      1× 1W       no      atsp
+j493    AID18   sn012776    15      2× 2W       unused? atsp
