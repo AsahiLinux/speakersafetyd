@@ -222,9 +222,11 @@ fn main() {
 
         loop {
             // Block while we're reading into the buffer
-            io.readi(&mut buf)
+            let read = io
+                .readi(&mut buf)
                 .or_else(|e| {
                     if e.errno() == Errno::ESTRPIPE {
+                        warn!("Suspend detected!");
                         // Resume handling
                         loop {
                             match pcm.resume() {
@@ -234,6 +236,7 @@ fn main() {
                             }
                         }
                         .unwrap();
+                        warn!("Resume successful");
                         io.readi(&mut buf)
                     } else {
                         Err(e)
