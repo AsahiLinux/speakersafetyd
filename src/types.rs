@@ -358,6 +358,18 @@ impl Speaker {
         }
 
         let pwr_avg: f32 = pwr_sum / ((buf.len() / self.g.channels) as f32);
+        /*
+         * This really shouldn't happen other than rounding error,
+         * if it does there's probably something wrong with the ivsense
+         * data.
+         */
+        if pwr_avg < -0.01 {
+                panic!(
+                    "{}: Negative power, bad ivsense data? ({})",
+                       self.name, pwr_avg
+                );
+        }
+        let pwr_avg = pwr_avg.max(0.0);
 
         s.t_coil_hyst = s
             .t_coil_hyst
