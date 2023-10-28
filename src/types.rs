@@ -388,14 +388,14 @@ impl Speaker {
 
         s.gain = gain;
 
-        debug!(
-            "{}: Coil {:.2} °C Magnet {:.2} °C Power {:.2} W Gain {:.2} dB",
-            self.name, s.t_coil, s.t_magnet, pwr_avg, gain
-        );
-
         if s.gain > -0.01 {
             s.gain = 0.;
         }
+
+        debug!(
+            "{}: Coil {:.2} °C Magnet {:.2} °C Power {:.2} W Gain {:.2} dB",
+            self.name, s.t_coil, s.t_magnet, pwr_avg, s.gain
+        );
 
         s.gain
     }
