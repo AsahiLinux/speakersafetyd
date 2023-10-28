@@ -82,7 +82,7 @@ impl Blackbox {
             sample_rate: self.blocks[0].sample_rate,
             channels: self.globals.channels,
             t_ambient: self.globals.t_ambient,
-            t_safe_max: self.globals.t_safe_max,
+            t_window: self.globals.t_window,
             t_hysteresis: self.globals.t_hysteresis,
             blocks: null
         };

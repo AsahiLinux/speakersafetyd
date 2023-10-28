@@ -186,7 +186,7 @@ pub struct Globals {
     pub channels: usize,
     pub period: usize,
     pub t_ambient: f32,
-    pub t_safe_max: f32,
+    pub t_window: f32,
     pub t_hysteresis: f32,
     pub ctl_vsense: String,
     pub ctl_isense: String,
@@ -201,7 +201,7 @@ impl Globals {
             channels: helpers::parse_int(config, "Globals", "channels"),
             period: helpers::parse_int(config, "Globals", "period"),
             t_ambient: helpers::parse_float(config, "Globals", "t_ambient"),
-            t_safe_max: helpers::parse_float(config, "Globals", "t_safe_max"),
+            t_window: helpers::parse_float(config, "Globals", "t_window"),
             t_hysteresis: helpers::parse_float(config, "Globals", "t_hysteresis"),
             ctl_vsense: helpers::parse_string(config, "Controls", "vsense"),
             ctl_isense: helpers::parse_string(config, "Controls", "isense"),
@@ -286,16 +286,16 @@ impl Speaker {
 
         s.t_coil = if cold_boot {
             // Assume warm but not warm enough to limit
-            globals.t_safe_max as f64 - 1f64
+            (new_speaker.t_limit - globals.t_window) as f64 - 1f64
         } else {
             // Worst case startup assumption
-            (new_speaker.t_limit - new_speaker.t_headroom) as f64
+            new_speaker.t_limit as f64
         };
         s.t_magnet = globals.t_ambient as f64
             + (s.t_coil - globals.t_ambient as f64)
                 * (new_speaker.tr_magnet / (new_speaker.tr_magnet + new_speaker.tr_coil)) as f64;
 
-        let max_dt = new_speaker.t_limit - new_speaker.t_headroom - globals.t_ambient;
+        let max_dt = new_speaker.t_limit - globals.t_ambient;
         let max_pwr = max_dt / (new_speaker.tr_magnet + new_speaker.tr_coil);
 
         let amp_gain = new_speaker.alsa_iface.get_amp_gain(ctl);
@@ -307,7 +307,7 @@ impl Speaker {
 
         assert!(new_speaker.is_chan < globals.channels);
         assert!(new_speaker.vs_chan < globals.channels);
-        assert!(new_speaker.t_limit - new_speaker.t_headroom > globals.t_safe_max);
+        assert!(new_speaker.t_limit - globals.t_window > globals.t_ambient);
 
         info!("  Group: {}", new_speaker.group);
         info!("  Max temperature: {:.1} °C", new_speaker.t_limit);
@@ -341,13 +341,13 @@ impl Speaker {
             s.t_coil = t_coil_target * alpha_coil + s.t_coil * (1. - alpha_coil);
             s.t_magnet = t_magnet_target * alpha_magnet + s.t_magnet * (1. - alpha_magnet);
 
-            if s.t_coil > self.t_limit as f64 {
+            if s.t_coil > (self.t_limit + self.t_headroom) as f64 {
                 panic!(
                     "{}: Coil temperature limit exceeded ({} > {})",
                     self.name, s.t_coil, self.t_limit
                 );
             }
-            if s.t_magnet > self.t_limit as f64 {
+            if s.t_magnet > (self.t_limit + self.t_headroom) as f64 {
                 panic!(
                     "{}: Magnet temperature limit exceeded ({} > {})",
                     self.name, s.t_magnet, self.t_limit
@@ -371,7 +371,7 @@ impl Speaker {
         let temp = s.t_coil_hyst.max(s.t_magnet_hyst);
 
         let reduction =
-            (temp - self.g.t_safe_max) / (self.t_limit - self.t_headroom - self.g.t_safe_max);
+            (temp - (self.t_limit - self.g.t_window)) / self.g.t_window;
         let gain = s.min_gain * reduction.max(0.);
 
         s.gain = gain;
