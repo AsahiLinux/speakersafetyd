@@ -132,6 +132,26 @@ pub fn write_ev(card: &alsa::ctl::Ctl, ev: &alsa::ctl::ElemValue, name: &str) {
 }
 
 /**
+    Wrapper for alsa::ctl::Ctl::elem_write().
+*/
+pub fn get_range_db(
+    card: &alsa::ctl::Ctl,
+    el: &alsa::ctl::ElemId,
+    name: &str,
+) -> (MilliBel, MilliBel) {
+    match card.get_db_range(el) {
+        // alsa:Result<()>
+        Ok(val) => val,
+        Err(e) => {
+            panic!(
+                "Could not get elem db range {}. alsa-lib error: {:?}",
+                name, e
+            );
+        }
+    }
+}
+
+/**
     Wrapper for alsa::ctl::Ctl::elem_read().
 */
 pub fn lock_el(card: &alsa::ctl::Ctl, el: &alsa::ctl::ElemId, name: &str) {

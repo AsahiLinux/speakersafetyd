@@ -107,7 +107,7 @@ impl Mixer {
         helpers::read_ev(card, &mut vs.val, &vs.elem_name);
         assert!(vs.val.get_boolean(0).unwrap());
 
-        Mixer {
+        let mut ret = Mixer {
             drv: name.to_owned(),
             level: Elem::new(
                 prefix.clone() + &globals.ctl_volume,
@@ -119,7 +119,25 @@ impl Mixer {
                 card,
                 alsa::ctl::ElemType::Integer,
             ),
-        }
+        };
+
+        /*
+         * Set amp gain to max available (kernel should've clamped).
+         * alsa-rs only has bindings for range in dB, so we go through
+         * that.
+         */
+
+        let (_min, max) =
+            helpers::get_range_db(card, &mut ret.amp_gain.id, &ret.amp_gain.elem_name);
+        let max_int = card
+            .convert_from_db(&mut ret.amp_gain.id, max, alsa::Round::Floor)
+            .unwrap();
+
+        ret.amp_gain.val.set_integer(0, max_int.try_into().unwrap());
+
+        helpers::write_ev(card, &ret.amp_gain.val, &ret.amp_gain.elem_name);
+
+        ret
     }
 
     fn get_amp_gain(&mut self, card: &Ctl) -> f32 {
