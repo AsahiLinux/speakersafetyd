@@ -10,9 +10,11 @@ VARDIR ?= /var/
 all:
 	cargo build --release
 
-install:
+install: install-data
 	install -dDm0755 $(DESTDIR)/$(BINDIR)
 	install -pm0755 target/release/speakersafetyd $(DESTDIR)/$(BINDIR)/speakersafetyd
+
+install-data:
 	install -dDm0755 $(DESTDIR)/$(UNITDIR)
 	install -pm0644 speakersafetyd.service $(DESTDIR)/$(UNITDIR)/speakersafetyd.service
 	install -dDm0755 $(DESTDIR)/$(UDEVDIR)
@@ -24,3 +26,5 @@ install:
 uninstall:
 	rm -f $(DESTDIR)/$(BINDIR)/speakersafetyd $(DESTDIR)/$(UNITDIR)/speakersafetyd.service $(DESTDIR)/$(UDEVDIR)/95-speakersafetyd.rules
 	rm -rf $(DESTDIR)/$(SHAREDIR)/speakersafetyd
+
+.PHONY: all install install-data uninstall
