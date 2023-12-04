@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Instant;
 
 use alsa::nix::errno::Errno;
@@ -87,6 +89,22 @@ impl Default for SpeakerGroup {
 
 fn main() {
     let args = Options::parse();
+
+    let sigquit = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGQUIT, Arc::clone(&sigquit)).unwrap();
+    // signal_hook insists on using SA_RESTART, which we don't want. Override it.
+    unsafe {
+        let mut act: libc::sigaction = core::mem::zeroed();
+        assert!(libc::sigaction(signal_hook::consts::SIGQUIT, core::ptr::null(), &mut act) == 0);
+        act.sa_flags &= !libc::SA_RESTART;
+        assert!(
+            libc::sigaction(
+                signal_hook::consts::SIGQUIT,
+                &mut act,
+                core::ptr::null_mut()
+            ) == 0
+        );
+    }
 
     SimpleLogger::new()
         .with_level(args.verbose.log_level_filter())
@@ -223,10 +241,16 @@ fn main() {
         let mut once_nominal = false;
 
         loop {
+            if sigquit.load(Ordering::Relaxed) {
+                panic!("SIGQUIT received");
+            }
             // Block while we're reading into the buffer
             let read = io
                 .readi(&mut buf)
                 .or_else(|e| {
+                    if sigquit.load(Ordering::Relaxed) {
+                        panic!("SIGQUIT received");
+                    }
                     if e.errno() == Errno::ESTRPIPE {
                         warn!("Suspend detected!");
                         // Resume handling
