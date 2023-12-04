@@ -1,6 +1,3 @@
-# Temporary compat rule
-SUBSYSTEM=="sound", KERNEL=="card*", ATTR{id}=="J313", ATTR{id}="AppleJ313"
-
 SUBSYSTEM=="sound", DRIVERS=="snd-soc-macaudio", GOTO="speakersafetyd_macaudio"
 GOTO="speakersafetyd_end"
 
