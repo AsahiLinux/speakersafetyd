@@ -58,6 +58,16 @@ where
         .expect("{}/{}: Out of bounds")
 }
 
+pub fn parse_opt_int<T: TryFrom<i64>>(config: &Ini, section: &str, key: &str) -> Option<T>
+where
+    <T as TryFrom<i64>>::Error: std::fmt::Debug,
+{
+    config
+        .getint(section, key)
+        .expect(&format!("{}/{}: Invalid value", section, key))
+        .map(|a| a.try_into().expect("{}/{}: Out of bounds"))
+}
+
 /**
     Wrapper around configparser::ini::Ini.getfloat()
     to safely unwrap the Result<Option<f64>, E> returned by

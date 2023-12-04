@@ -26,6 +26,7 @@ use simple_logger::SimpleLogger;
 mod blackbox;
 mod helpers;
 mod types;
+mod uclamp;
 
 const DEFAULT_CONFIG_PATH: &str = "share/speakersafetyd";
 
@@ -142,6 +143,13 @@ fn main() {
     cfg.load(config_path).expect("Failed to read config file");
 
     let globals = types::Globals::parse(&cfg);
+
+    if globals.uclamp_min.is_some() || globals.uclamp_max.is_some() {
+        uclamp::set_uclamp(
+            globals.uclamp_min.unwrap_or(0).try_into().unwrap(),
+            globals.uclamp_max.unwrap_or(1024).try_into().unwrap(),
+        );
+    }
 
     let mut blackbox = args.blackbox_path.map(|p| {
         info!("Enabling blackbox, path: {:?}", p);

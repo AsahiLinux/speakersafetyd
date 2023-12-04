@@ -192,6 +192,8 @@ pub struct Globals {
     pub ctl_isense: String,
     pub ctl_amp_gain: String,
     pub ctl_volume: String,
+    pub uclamp_min: Option<usize>,
+    pub uclamp_max: Option<usize>,
 }
 
 impl Globals {
@@ -207,6 +209,8 @@ impl Globals {
             ctl_isense: helpers::parse_string(config, "Controls", "isense"),
             ctl_amp_gain: helpers::parse_string(config, "Controls", "amp_gain"),
             ctl_volume: helpers::parse_string(config, "Controls", "volume"),
+            uclamp_min: helpers::parse_opt_int(config, "Globals", "uclamp_min"),
+            uclamp_max: helpers::parse_opt_int(config, "Globals", "uclamp_max"),
         }
     }
 }
