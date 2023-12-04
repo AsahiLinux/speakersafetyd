@@ -115,7 +115,9 @@ fn main() {
     config_path.set_extension("conf");
     info!("Config file: {:?}", config_path);
 
-    let device = format!("hw:{}", model.to_ascii_uppercase());
+    let maker_titlecase = maker[0..1].to_ascii_uppercase() + &maker[1..];
+
+    let device = format!("hw:{}{}", maker_titlecase, model.to_ascii_uppercase());
     info!("Device: {}", device);
 
     let mut cfg: Ini = Ini::new_cs();
