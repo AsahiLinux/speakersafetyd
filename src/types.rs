@@ -368,10 +368,10 @@ impl Speaker {
          * data.
          */
         if pwr_avg < -0.01 {
-                panic!(
-                    "{}: Negative power, bad ivsense data? ({})",
-                       self.name, pwr_avg
-                );
+            panic!(
+                "{}: Negative power, bad ivsense data? ({})",
+                self.name, pwr_avg
+            );
         }
         let pwr_avg = pwr_avg.max(0.0);
 
@@ -386,8 +386,7 @@ impl Speaker {
 
         let temp = s.t_coil_hyst.max(s.t_magnet_hyst);
 
-        let reduction =
-            (temp - (self.t_limit - self.g.t_window)) / self.g.t_window;
+        let reduction = (temp - (self.t_limit - self.g.t_window)) / self.g.t_window;
         let gain = s.min_gain * reduction.max(0.);
 
         s.gain = gain;
