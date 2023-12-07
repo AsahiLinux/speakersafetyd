@@ -97,7 +97,7 @@ impl Blackbox {
             };
             let mut speakers = json::JsonValue::new_array();
 
-            for group in self.blocks[0].state.iter() {
+            for group in block.state.iter() {
                 for speaker in group.iter() {
                     let _ = speakers.push(object! {
                         t_coil: speaker.t_coil,
