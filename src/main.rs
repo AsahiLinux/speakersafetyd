@@ -281,6 +281,10 @@ fn main() {
                 warn!("Expected {} samples, got {}", globals.period, read);
             }
 
+            if sigquit.load(Ordering::Relaxed) {
+                panic!("SIGQUIT received");
+            }
+
             let buf_read = &buf[0..read * globals.channels];
 
             let cur_sample_rate = sample_rate_elem.read_int(&ctl);
