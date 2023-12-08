@@ -204,6 +204,8 @@ t_limit = {p["temperature limit"]:.1f}
 t_headroom = {p["hard temp limit headroom"]:.1f}
 z_nominal = {p["Reb_ref"]:.2f}
 z_shunt = {p["Rshunt"]:.2f}
+a_t_20c = {chp["CL"]["a_t_20C"]:.8f}
+a_t_35c = {chp["CL"]["a_t_35C"]:.8f}
 is_scale = 3.75
 vs_scale = 14
 is_chan = {2 * ch}
@@ -218,6 +220,7 @@ t_window = 20.0
 channels = {channels}
 period = 4096
 link_gains = True
+uclamp_max = 64
 
 [Controls]
 vsense = VSENSE Switch
@@ -248,7 +251,7 @@ def process_atsp(e):
             if ch & (1 << i):
                 channels += 2
                 spkrs += f"""
-                
+
 [Speaker/{gn}_ch{i}]
 group = {gid}
 tr_coil = {d[p + "VoiceCoil: thermal resistance [C/Watt]"]:.2f}
@@ -258,6 +261,8 @@ tau_magnet = {d[p + "Magnet: thermal time constant [s]"]:.2f}
 t_limit = {d[p + "Temperature limit [C]"]:.1f}
 t_headroom = {d[p + "Temperature hard limit headroom [C]"]:.1f}
 z_nominal = {d[p + "VoiceCoil: DC resistance [Ohms]"]:.2f}
+a_t_20c = 0.0037
+a_t_35c = 0.0037
 is_scale = 3.75
 vs_scale = 14
 is_chan = {2 * i}
@@ -272,6 +277,7 @@ t_window = 20.0
 channels = {channels}
 period = 4096
 link_gains = {bool(d["Gain link all audio channels"])}
+uclamp_max = 64
 
 [Controls]
 vsense = VSENSE Switch
