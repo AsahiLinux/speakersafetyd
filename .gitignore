@@ -1,3 +1,5 @@
 /target
 *.kate-swp
 */target
+testing/*.wav
+testing/j*
