@@ -29,10 +29,10 @@ def smooth(a, n=3):
     return np.pad(ret, (pad//2, (pad + 1)//2), "edge")
 
 def butter_lowpass(cutoff, fs, order=5):
-    return butter(order, cutoff, fs=fs, btype='low', output="sos", analog=False)
+    return butter(order, cutoff, fs, btype='low', output="sos", analog=False)
 
 def butter_highpass(cutoff, fs, order=5):
-    return butter(order, cutoff, fs=fs, btype='high', output="sos", analog=False)
+    return butter(order, cutoff, fs, btype='high', output="sos", analog=False)
 
 def butter_lowpass_filter(data, cutoff, fs, order=5):
     sos = butter_lowpass(cutoff, fs, order=order)
