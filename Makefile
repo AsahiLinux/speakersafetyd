@@ -19,7 +19,7 @@ install:
 	install -pm0644 95-speakersafetyd.rules $(DESTDIR)/$(UDEVDIR)/95-speakersafetyd.rules
 	install -dDm0755 $(DESTDIR)/$(SHAREDIR)/speakersafetyd/apple
 	install -pm0644 -t $(DESTDIR)/$(SHAREDIR)/speakersafetyd/apple $(wildcard conf/apple/*)
-	install -dDm0755 $(DESTDIR)/$(VARDIR)/speakersafetyd/blackbox
+	install -dDm0755 $(DESTDIR)/$(VARDIR)/lib/speakersafetyd/blackbox
 
 uninstall:
 	rm -f $(DESTDIR)/$(BINDIR)/speakersafetyd $(DESTDIR)/$(UNITDIR)/speakersafetyd.service $(DESTDIR)/$(UDEVDIR)/95-speakersafetyd.rules
