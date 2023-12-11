@@ -7,7 +7,7 @@ j293    AID3    tas5770     15      2× 2W       no      atsp
 j313    AID4    tas5770     10      2× 1W       no      atsp
 j314    AID8    sn012776    15      2× 2W+1T    yes     spp3
 j316    AID9    sn012776    15      2× 2W+1T    yes     spp3
-j375    AID10   sn012776    15      1× 1W       no      atsp
+j375    AID10   sn012776    20      1× 1W       no      atsp
 j413    AID13   sn012776    15      2× 1W+1T    yes     spp3
 j414    AID14   sn012776    15      2× 2W+1T    yes     spp3
 j415    AID27   sn012776    15      2× 2W+1T    yes     spp3
