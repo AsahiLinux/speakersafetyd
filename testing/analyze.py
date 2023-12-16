@@ -6,15 +6,15 @@ from scipy.signal import butter, sosfilt, freqz
 CONFDIR = os.path.join(os.path.dirname(__file__), "../conf")
 
 # This information is not in the blackbox file
-DEFAULT_AMP_GAIN = 15.50
+DEFAULT_AMP_GAIN = 18.50
 AMP_GAIN = {
-    "apple,j180": 13.0,
+    "apple,j180": 16.0,
     "apple,j313": 16.0,
-    "apple,j274": 18.0,
-    "apple,j375": 18.0,
-    "apple,j473": 18.0,
-    "apple,j474": 18.0,
-    "apple,j475": 18.0,
+    "apple,j274": 21.0,
+    "apple,j375": 21.0,
+    "apple,j473": 21.0,
+    "apple,j474": 21.0,
+    "apple,j475": 21.0,
 }
 
 def db(x):
@@ -162,6 +162,7 @@ class Model:
         # ax2.plot(self.m_x, p, "b")
 
         rref = np.average(r[1 * sr:2 * sr])
+        print(f"Initial resistance: {rref} ohms")
 
         # Clear out the first second, since it tends to contain garbage
         r[:1*sr] = rref
