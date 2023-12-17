@@ -210,9 +210,9 @@ fn main() {
 
         let pcm_name = format!("{},{}", device, globals.visense_pcm);
         // Set up PCM to buffer in V/ISENSE
-        let pcm: alsa::pcm::PCM =
-            helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0);
-        let io = pcm.io_i16().unwrap();
+        let mut pcm: Option<alsa::pcm::PCM> =
+            Some(helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0));
+        let mut io = Some(pcm.as_ref().unwrap().io_i16().unwrap());
 
         let mut sample_rate_elem = types::Elem::new(
             "Speaker Sample Rate".to_string(),
@@ -253,14 +253,19 @@ fn main() {
                 panic!("SIGQUIT received");
             }
             // Block while we're reading into the buffer
-            let read = io
-                .readi(&mut buf)
-                .or_else(|e| {
+            let read = io.as_ref().unwrap().readi(&mut buf);
+
+            #[allow(unused_mut)]
+            #[allow(unused_assignments)]
+            let read = match read {
+                Ok(a) => Ok(a),
+                Err(e) => {
                     if sigquit.load(Ordering::Relaxed) {
                         panic!("SIGQUIT received");
                     }
                     if e.errno() == Errno::ESTRPIPE {
                         warn!("Suspend detected!");
+                        /*
                         // Resume handling
                         loop {
                             match pcm.resume() {
@@ -271,12 +276,20 @@ fn main() {
                         }
                         .unwrap();
                         warn!("Resume successful");
-                        io.readi(&mut buf)
-                    } else {
-                        Err(e)
+                        */
+                        // Work around kernel issue: resume sometimes breaks visense
+                        warn!("Reinitializing PCM to work around kernel bug...");
+                        io = None;
+                        pcm = None;
+                        pcm = Some(helpers::open_pcm(&pcm_name, globals.channels.try_into().unwrap(), 0));
+                        io = Some(pcm.as_ref().unwrap().io_i16().unwrap());
+                        continue;
                     }
-                })
-                .unwrap();
+                    Err(e)
+                }
+            }
+            .unwrap();
+
             if read != globals.period {
                 warn!("Expected {} samples, got {}", globals.period, read);
             }
