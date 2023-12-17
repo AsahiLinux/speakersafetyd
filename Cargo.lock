@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "speakersafetyd"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "alsa",
  "chrono",
