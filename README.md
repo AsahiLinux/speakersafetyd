@@ -47,7 +47,7 @@ This lets us fearlessly drive the speakers as hard as they physically can
 be without being permanently damaged. This is extremely useful, as without it
 the output level on these devices would have to be hard limited to a very low
 level that is known to be safe for the worst possible input. Instead, we can
-simply duck the output in those cases and allow the speakers to oeprate at
+simply duck the output in those cases and allow the speakers to operate at
 full power where possible.
 
 Many integrated amplifier chips implement this functionality in hardware, as well
