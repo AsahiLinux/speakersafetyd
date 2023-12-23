@@ -396,7 +396,7 @@ impl Speaker {
         }
 
         debug!(
-            "{}: Coil {:.2} °C Magnet {:.2} °C Power {:.2} W Gain {:.2} dB",
+            "{:>15}: Coil {:>6.2} °C Magnet {:>6.2} °C Power {:>5.2} W Gain {:>6.2} dB",
             self.name, s.t_coil, s.t_magnet, pwr_avg, s.gain
         );
 
