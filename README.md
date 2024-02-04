@@ -31,7 +31,7 @@ The cheap component speaker elements used in modern devices like
 Bluetooth speakers, TVs, laptops, etc. are very fragile. In order
 to eke the highest possible sound quality out of them, they need to be
 driven *hard*. This leaves us with a dilemma - how do we drive these
-speakers hard enoguh to get a loud, high-quality output but not hard
+speakers hard enough to get a loud, high-quality output but not hard
 enough to destroy them?
 
 A speaker's electromechanical characteristics can be modelled
