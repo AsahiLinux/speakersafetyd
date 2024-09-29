@@ -19,7 +19,6 @@ use alsa::nix::errno::Errno;
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use configparser::ini::Ini;
-use log;
 use log::{debug, info, warn};
 use simple_logger::SimpleLogger;
 
@@ -129,8 +128,8 @@ fn main() {
         .split_once(",")
         .expect("Unexpected machine name format");
 
-    config_path.push(&maker);
-    config_path.push(&model);
+    config_path.push(maker);
+    config_path.push(model);
     config_path.set_extension("conf");
     info!("Config file: {:?}", config_path);
 
@@ -203,7 +202,7 @@ fn main() {
             groups
                 .values()
                 .map(|a| a.speakers.len())
-                .fold(0, |a, b| a + b)
+                .sum::<usize>()
                 == speaker_count
         );
         assert!(2 * speaker_count <= globals.channels);
@@ -302,12 +301,10 @@ fn main() {
 
             let cur_sample_rate = sample_rate_elem.read_int(&ctl);
 
-            if cur_sample_rate != 0 {
-                if cur_sample_rate != sample_rate {
-                    sample_rate = cur_sample_rate;
-                    info!("Sample rate: {}", sample_rate);
-                    blackbox_ref.as_mut().map(|bb| bb.reset());
-                }
+            if cur_sample_rate != 0 && cur_sample_rate != sample_rate {
+                sample_rate = cur_sample_rate;
+                info!("Sample rate: {}", sample_rate);
+                if let Some(bb) = blackbox_ref.as_mut() { bb.reset() }
             }
 
             if sample_rate == 0 {
@@ -326,7 +323,7 @@ fn main() {
                 for (_, group) in groups.iter_mut() {
                     group.speakers.iter_mut().for_each(|s| s.skip_model(skip));
                 }
-                blackbox_ref.as_mut().map(|bb| bb.reset());
+                if let Some(bb) = blackbox_ref.as_mut() { bb.reset() }
             }
 
             last_update = now;
@@ -334,7 +331,7 @@ fn main() {
             if let Some(bb) = blackbox_ref.as_mut() {
                 let max_idx = *groups.iter().map(|g| g.0).max().unwrap();
                 let gstates = (0..=max_idx)
-                    .map(|i| groups[&i].speakers.iter().map(|s| s.s.clone()).collect())
+                    .map(|i| groups[&i].speakers.iter().map(|s| s.s).collect())
                     .collect();
                 bb.push(sample_rate, buf_read.to_vec(), gstates);
             }
