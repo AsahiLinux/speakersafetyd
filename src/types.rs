@@ -42,7 +42,7 @@ impl Elem {
         helpers::lock_el(card, &new_elem.id, &new_elem.elem_name);
         helpers::read_ev(card, &mut new_elem.val, &new_elem.elem_name);
 
-        return new_elem;
+        new_elem
     }
 
     pub fn read_int(&mut self, card: &Ctl) -> i32 {
@@ -50,13 +50,13 @@ impl Elem {
 
         self.val
             .get_integer(0)
-            .expect(&format!("Could not read {}", self.elem_name))
+            .unwrap_or_else(|| panic!("Could not read {}", self.elem_name))
     }
 
     pub fn write_int(&mut self, card: &Ctl, value: i32) {
         self.val
             .set_integer(0, value)
-            .expect(&format!("Could not set {}", self.elem_name));
+            .unwrap_or_else(|| panic!("Could not set {}", self.elem_name));
         helpers::write_ev(card, &mut self.val, &self.elem_name);
     }
 }
@@ -147,7 +147,7 @@ impl Mixer {
             .amp_gain
             .val
             .get_integer(0)
-            .expect(&format!("Could not read amp gain for {}", self.drv));
+            .unwrap_or_else(|| panic!("Could not read amp gain for {}", self.drv));
 
         helpers::int_to_db(card, &self.amp_gain.id, val).to_db()
     }
@@ -269,7 +269,7 @@ impl Speaker {
         let section = "Speaker/".to_owned() + name;
         let mut new_speaker: Speaker = Speaker {
             name: name.to_string(),
-            alsa_iface: Mixer::new(&name, ctl, globals),
+            alsa_iface: Mixer::new(name, ctl, globals),
             group: helpers::parse_int(config, &section, "group"),
             tau_coil: helpers::parse_float(config, &section, "tau_coil"),
             tau_magnet: helpers::parse_float(config, &section, "tau_magnet"),

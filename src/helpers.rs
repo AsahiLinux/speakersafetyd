@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // (C) 2022 The Asahi Linux Contributors
 
-use alsa;
 use alsa::mixer::MilliBel;
 use configparser::ini::Ini;
 
@@ -13,7 +12,7 @@ pub fn open_card(card: &str) -> alsa::ctl::Ctl {
         }
     };
 
-    return ctldev;
+    ctldev
 }
 
 pub fn open_pcm(dev: &str, chans: u32, mut sample_rate: u32) -> alsa::pcm::PCM {
@@ -38,7 +37,7 @@ pub fn open_pcm(dev: &str, chans: u32, mut sample_rate: u32) -> alsa::pcm::PCM {
         pcm.hw_params(&params).unwrap();
     }
 
-    return pcm;
+    pcm
 }
 
 /**
@@ -52,8 +51,8 @@ where
 {
     config
         .getint(section, key)
-        .expect(&format!("{}/{}: Invalid value", section, key))
-        .expect(&format!("{}/{}: Missing key", section, key))
+        .unwrap_or_else(|_| panic!("{}/{}: Invalid value", section, key))
+        .unwrap_or_else(|| panic!("{}/{}: Missing key", section, key))
         .try_into()
         .expect("{}/{}: Out of bounds")
 }
@@ -64,7 +63,7 @@ where
 {
     config
         .getint(section, key)
-        .expect(&format!("{}/{}: Invalid value", section, key))
+        .unwrap_or_else(|_| panic!("{}/{}: Invalid value", section, key))
         .map(|a| a.try_into().expect("{}/{}: Out of bounds"))
 }
 
@@ -76,8 +75,8 @@ where
 pub fn parse_float(config: &Ini, section: &str, key: &str) -> f32 {
     let val = config
         .getfloat(section, key)
-        .expect(&format!("{}/{}: Invalid value", section, key))
-        .expect(&format!("{}/{}: Missing key", section, key)) as f32;
+        .unwrap_or_else(|_| panic!("{}/{}: Invalid value", section, key))
+        .unwrap_or_else(|| panic!("{}/{}: Missing key", section, key)) as f32;
 
     assert!(val.is_finite());
     val
@@ -91,7 +90,7 @@ pub fn parse_float(config: &Ini, section: &str, key: &str) -> f32 {
 pub fn parse_string(config: &Ini, section: &str, key: &str) -> String {
     config
         .get(section, key)
-        .expect(&format!("{}/{}: Missing key", section, key))
+        .unwrap_or_else(|| panic!("{}/{}: Missing key", section, key))
 }
 
 /**
@@ -99,21 +98,21 @@ pub fn parse_string(config: &Ini, section: &str, key: &str) -> String {
     pass in the Bytes type for V/ISENSE
 */
 pub fn new_elemvalue(t: alsa::ctl::ElemType) -> alsa::ctl::ElemValue {
-    let val = match alsa::ctl::ElemValue::new(t) {
+    
+
+    match alsa::ctl::ElemValue::new(t) {
         Ok(val) => val,
         Err(_e) => {
             panic!("Could not open a handle to an element!");
         }
-    };
-
-    return val;
+    }
 }
 
 /**
     Wrapper for alsa::ctl::Ctl::elem_read().
 */
 pub fn read_ev(card: &alsa::ctl::Ctl, ev: &mut alsa::ctl::ElemValue, name: &str) {
-    let _val = match card.elem_read(ev) {
+    match card.elem_read(ev) {
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
@@ -129,7 +128,7 @@ pub fn read_ev(card: &alsa::ctl::Ctl, ev: &mut alsa::ctl::ElemValue, name: &str)
     Wrapper for alsa::ctl::Ctl::elem_write().
 */
 pub fn write_ev(card: &alsa::ctl::Ctl, ev: &alsa::ctl::ElemValue, name: &str) {
-    let _val = match card.elem_write(ev) {
+    match card.elem_write(ev) {
         // alsa:Result<()>
         Ok(val) => val,
         Err(e) => {
@@ -175,7 +174,9 @@ pub fn lock_el(card: &alsa::ctl::Ctl, el: &alsa::ctl::ElemId, name: &str) {
 }
 
 pub fn int_to_db(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: i32) -> MilliBel {
-    let db = match card.convert_to_db(id, val.into()) {
+    
+
+    match card.convert_to_db(id, val.into()) {
         Ok(inner) => inner,
         Err(e) => {
             panic!(
@@ -183,14 +184,14 @@ pub fn int_to_db(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: i32) -> Mil
                 val, e
             );
         }
-    };
-
-    return db;
+    }
 }
 
 pub fn db_to_int(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: f32) -> i32 {
     let mb: MilliBel = MilliBel((val * 100.0) as i64);
-    let new_int = match card.convert_from_db(id, mb, alsa::Round::Floor) {
+    
+
+    match card.convert_from_db(id, mb, alsa::Round::Floor) {
         Ok(inner) => inner as i32,
         Err(e) => {
             panic!(
@@ -198,7 +199,5 @@ pub fn db_to_int(card: &alsa::ctl::Ctl, id: &alsa::ctl::ElemId, val: f32) -> i32
                 val, e
             );
         }
-    };
-
-    return new_int;
+    }
 }
