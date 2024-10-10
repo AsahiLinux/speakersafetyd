@@ -15,7 +15,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
-use alsa::nix::errno::Errno;
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use configparser::ini::Ini;
@@ -262,7 +261,7 @@ fn main() {
                     if sigquit.load(Ordering::Relaxed) {
                         panic!("SIGQUIT received");
                     }
-                    if e.errno() == Errno::ESTRPIPE {
+                    if e.errno() == libc::ESTRPIPE {
                         warn!("Suspend detected!");
                         /*
                         // Resume handling
