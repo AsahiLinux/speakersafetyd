@@ -30,7 +30,7 @@ const DEFAULT_CONFIG_PATH: &str = "share/speakersafetyd";
 
 const UNLOCK_MAGIC: i32 = 0xdec1be15u32 as i32;
 
-const FLAGFILE: &str = "/run/speakersafetyd.flag";
+const FLAGFILE: &str = "/run/speakersafetyd/speakersafetyd.flag";
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]

@@ -25,6 +25,7 @@ adapt for any device that provides V/ISENSE data in a manner similar to TAS2764.
 * Rust stable
 * alsa-lib
 * An Apple Silicon Mac running Asahi Linux
+* A `speakersafetyd` user in the `audio` group
 
 ### Some background on Smart Amps
 The cheap component speaker elements used in modern devices like
