@@ -1,1 +1,2 @@
-d /var/lib/speakersafetyd/blackbox 0755 root root -
+d /var/lib/speakersafetyd/blackbox 0755 speakersafetyd speakersafetyd -
+d /run/speakersafetyd 0755 speakersafetyd speakersafetyd -
