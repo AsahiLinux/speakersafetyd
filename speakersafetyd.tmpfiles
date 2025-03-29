@@ -1,3 +1,3 @@
 d /var/lib/speakersafetyd 755 speakersafetyd speakersafetyd -
-d /var/lib/speakersafetyd/blackbox 0600 speakersafetyd speakersafetyd -
+d /var/lib/speakersafetyd/blackbox 0700 speakersafetyd speakersafetyd -
 d /run/speakersafetyd 0755 speakersafetyd speakersafetyd -

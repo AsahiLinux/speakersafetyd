@@ -25,7 +25,7 @@ install-data:
 	install -dDm0755 $(DESTDIR)/$(SHAREDIR)/speakersafetyd/apple
 	install -pm0644 -t $(DESTDIR)/$(SHAREDIR)/speakersafetyd/apple $(wildcard conf/apple/*)
 	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/$(VARDIR)/lib/speakersafetyd
-	install -dDm0600 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/$(VARDIR)/lib/speakersafetyd/blackbox
+	install -dDm0700 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/$(VARDIR)/lib/speakersafetyd/blackbox
 	install -dDm0755 $(DESTDIR)/$(TMPFILESDIR)
 	install -pm0644 speakersafetyd.tmpfiles $(DESTDIR)/$(TMPFILESDIR)/speakersafetyd.conf
 	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/run/speakersafetyd
