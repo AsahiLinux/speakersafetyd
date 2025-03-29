@@ -27,7 +27,7 @@ install-data:
 	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/$(VARDIR)/lib/speakersafetyd/blackbox
 	install -dDm0755 $(DESTDIR)/$(TMPFILESDIR)
 	install -pm0644 speakersafetyd.tmpfiles $(DESTDIR)/$(TMPFILESDIR)/speakersafetyd.conf
-	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) /run/speakersafetyd
+	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/run/speakersafetyd
 
 uninstall:
 	rm -f $(DESTDIR)/$(BINDIR)/speakersafetyd $(DESTDIR)/$(UNITDIR)/speakersafetyd.service $(DESTDIR)/$(UDEVDIR)/95-speakersafetyd.rules $(DESTDIR)/$(TMPFILESDIR)/speakersafetyd.conf
