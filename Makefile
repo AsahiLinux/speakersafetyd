@@ -10,6 +10,7 @@ SHAREDIR ?= /usr/share/
 VARDIR ?= /var/
 SPEAKERSAFETYD_GROUP ?= speakersafetyd
 SPEAKERSAFETYD_USER ?= speakersafetyd
+INSTALL_USER_GROUP ?= -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP)
 
 all:
 	cargo build --release
@@ -25,11 +26,11 @@ install-data:
 	install -pm0644 95-speakersafetyd.rules $(DESTDIR)$(UDEVDIR)/95-speakersafetyd.rules
 	install -dDm0755 $(DESTDIR)$(SHAREDIR)speakersafetyd/apple
 	install -pm0644 -t $(DESTDIR)$(SHAREDIR)speakersafetyd/apple $(wildcard conf/apple/*)
-	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)$(VARDIR)/lib/speakersafetyd
-	install -dDm0700 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)$(VARDIR)/lib/speakersafetyd/blackbox
+	install -dDm0755 $(INSTALL_USER_GROUP) $(DESTDIR)$(VARDIR)/lib/speakersafetyd
+	install -dDm0700 $(INSTALL_USER_GROUP) $(DESTDIR)$(VARDIR)/lib/speakersafetyd/blackbox
 	install -dDm0755 $(DESTDIR)$(TMPFILESDIR)
 	install -pm0644 speakersafetyd.tmpfiles $(DESTDIR)$(TMPFILESDIR)/speakersafetyd.conf
-	install -dDm0755 -o $(SPEAKERSAFETYD_USER) -g $(SPEAKERSAFETYD_GROUP) $(DESTDIR)/run/speakersafetyd
+	install -dDm0755 $(INSTALL_USER_GROUP) $(DESTDIR)/run/speakersafetyd
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/speakersafetyd $(DESTDIR)$(UNITDIR)/speakersafetyd.service $(DESTDIR)$(UDEVDIR)/95-speakersafetyd.rules $(DESTDIR)$(TMPFILESDIR)/speakersafetyd.conf
