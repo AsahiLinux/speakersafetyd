@@ -4,7 +4,12 @@ Description=Speaker Protection Daemon
 [Service]
 Type=simple
 ExecStart=/usr/bin/speakersafetyd -c /usr/share/speakersafetyd/ -b /var/lib/speakersafetyd/blackbox -m 7
+RuntimeDirectory=speakersafetyd
+StateDirectory=speakersafetyd
+DynamicUser=true
 User=speakersafetyd
+Group=speakersafetyd
+SupplementaryGroups=audio
 AmbientCapabilities=CAP_SYS_NICE
 CapabilityBoundingSet=CAP_SYS_NICE
 UMask=0066

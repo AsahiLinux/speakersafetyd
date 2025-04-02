@@ -9,6 +9,7 @@
 */
 use std::collections::BTreeMap;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -151,6 +152,8 @@ fn main() {
 
     let mut blackbox = args.blackbox_path.map(|p| {
         info!("Enabling blackbox, path: {:?}", p);
+        std::fs::create_dir_all(&p).unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o700)).unwrap();
         blackbox::Blackbox::new(&machine, &p, &globals)
     });
 
