@@ -6,7 +6,6 @@ UNITDIR ?= /lib/systemd/system
 UDEVDIR ?= /lib/udev/rules.d
 TMPFILESDIR ?= /usr/lib/tmpfiles.d
 SHAREDIR ?= /usr/share/
-VARDIR ?= /var/
 SPEAKERSAFETYD_GROUP ?= speakersafetyd
 SPEAKERSAFETYD_USER ?= speakersafetyd
 
