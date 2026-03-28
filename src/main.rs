@@ -9,7 +9,7 @@
 */
 use std::collections::BTreeMap;
 use std::fs;
-use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+use std::panic::{catch_unwind, resume_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -21,7 +21,6 @@ use configparser::ini::Ini;
 use log::{debug, info, warn};
 use simple_logger::SimpleLogger;
 
-mod blackbox;
 mod helpers;
 mod types;
 mod uclamp;
@@ -43,10 +42,6 @@ struct Options {
     /// Increase the log level
     #[command(flatten)]
     verbose: Verbosity<InfoLevel>,
-
-    /// Path to the blackbox dump directory
-    #[arg(short, long)]
-    blackbox_path: Option<PathBuf>,
 
     /// Maximum gain reduction before panicing (for debugging)
     #[arg(short, long)]
@@ -149,12 +144,6 @@ fn main() {
         );
     }
 
-    let mut blackbox = args.blackbox_path.map(|p| {
-        info!("Enabling blackbox, path: {:?}", p);
-        blackbox::Blackbox::new(&machine, &p, &globals)
-    });
-
-    let mut blackbox_ref = AssertUnwindSafe(&mut blackbox);
     let result = catch_unwind(move || {
         let speaker_names = get_speakers(&cfg);
         let speaker_count = speaker_names.len();
@@ -303,7 +292,6 @@ fn main() {
             if cur_sample_rate != 0 && cur_sample_rate != sample_rate {
                 sample_rate = cur_sample_rate;
                 info!("Sample rate: {}", sample_rate);
-                if let Some(bb) = blackbox_ref.as_mut() { bb.reset() }
             }
 
             if sample_rate == 0 {
@@ -322,18 +310,9 @@ fn main() {
                 for (_, group) in groups.iter_mut() {
                     group.speakers.iter_mut().for_each(|s| s.skip_model(skip));
                 }
-                if let Some(bb) = blackbox_ref.as_mut() { bb.reset() }
             }
 
             last_update = now;
-
-            if let Some(bb) = blackbox_ref.as_mut() {
-                let max_idx = *groups.iter().map(|g| g.0).max().unwrap();
-                let gstates = (0..=max_idx)
-                    .map(|i| groups[&i].speakers.iter().map(|s| s.s).collect())
-                    .collect();
-                bb.push(sample_rate, buf_read.to_vec(), gstates);
-            }
 
             let mut all_nominal = true;
             for (idx, group) in groups.iter_mut() {
@@ -371,20 +350,6 @@ fn main() {
     });
     if let Err(e) = result {
         warn!("Panic!");
-
-        let mut reason: String = "Unknown panic".into();
-
-        if let Some(s) = e.downcast_ref::<&'static str>() {
-            reason = (*s).into();
-        } else if let Some(s) = e.downcast_ref::<String>() {
-            reason = s.clone();
-        }
-
-        blackbox.as_mut().map(|bb| {
-            if bb.preserve(reason).is_err() {
-                warn!("Failed to write blackbox");
-            }
-        });
 
         resume_unwind(e);
     }
