@@ -7,7 +7,7 @@ description = "Speaker protection daemon for embedded Linux systems"
 repository = "https://github.com/AsahiLinux/speakersafetyd/"
 
 [dependencies]
-alsa = "^0.9.1"
+alsa = "^0.11.0"
 configparser = { version = "^3.1.0", features=["indexmap"] }
 clap = { version = "^4.1.6", features=["derive"] }
 log = "^0.4.17"
