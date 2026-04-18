@@ -13,6 +13,6 @@ clap = { version = "^4.6.1", features=["derive"] }
 log = "^0.4.29"
 clap-verbosity-flag = "^3.0.4"
 simple_logger = "^5.2.0"
-chrono = "^0.4.31"
+chrono = "^0.4.44"
 signal-hook = "^0.3.17"
 libc = "^0.2.150"
