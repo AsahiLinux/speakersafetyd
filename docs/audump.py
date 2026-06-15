@@ -296,8 +296,8 @@ if __name__ == "__main__":
 
     for s in au["strips"]:
         for e in s["effects"]:
-            if e["unit"]["subtype"].to_bytes(4) == b"spp3":
+            if e["unit"]["subtype"].to_bytes(4, "big") == b"spp3":
                 process_spp3(e)
-            if e["unit"]["subtype"].to_bytes(4) == b"atsp":
+            if e["unit"]["subtype"].to_bytes(4, "big") == b"atsp":
                 process_atsp(e)
 
