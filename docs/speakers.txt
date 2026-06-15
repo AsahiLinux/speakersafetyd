@@ -18,3 +18,9 @@ j473    AID12   sn012776    20      1× 1W       no      atsp
 j474    AID26   sn012776    20      1× 1W       no      atsp
 j475    AID25   sn012776    20      1× 1W       no      atsp
 j493    AID18   sn012776    15      2× 2W       unused? atsp
+j504    AID24   sn012776    15      2x 2W+1T    yes     spp3
+j514    AID28   sn012776    15      2x 2W+1T    yes     spp3
+j516    AID29   sn012776    15      2x 2W+1T    yes     spp3
+j575    AID33   sn012776    15      1x 1W       no      atsp
+j613    AID20   sn012776    15      2x 1W+1T    yes     spp3
+j615    AID21   sn012776    15      2x 2W+1T    yes     spp3
