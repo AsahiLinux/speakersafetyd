@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright The Asahi Linux Contributors
+
 import json, sys, os.path, configparser
 import numpy as np
 import matplotlib.pyplot as plt

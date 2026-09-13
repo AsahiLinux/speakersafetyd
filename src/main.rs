@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-// (C) 2022 The Asahi Linux Contributors
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) The Asahi Linux Contributors
 /*!
     Handles speaker safety on Apple Silicon machines. This code is designed to
     fail safe. The kernel keeps the speakers capped at a low volume level until

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-// (C) 2022 The Asahi Linux Contributors
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) The Asahi Linux Contributors
 
 use alsa::ctl::Ctl;
 use configparser::ini::Ini;

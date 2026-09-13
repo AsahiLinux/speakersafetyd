@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) The Asahi Linux Contributors
+
 use log::{info, warn};
 
 #[derive(Default)]

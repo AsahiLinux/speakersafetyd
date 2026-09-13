@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright The Asahi Linux Contributors
+
 #!/usr/bin/python
 import scipy, sys
 import numpy as np

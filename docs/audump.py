@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright The Asahi Linux Contributors
+
 import struct, sys, os.path, plistlib, pprint
 
 LABELS = {

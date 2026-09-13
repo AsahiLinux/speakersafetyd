@@ -60,3 +60,8 @@ voice coil. It is up to the implementer to capture this data and do something wi
 
 speakersafetyd is (as far as we know) the first and only FOSS implementation of the
 Smart Amp protection model.
+
+### Licences
+Up to and including version 2.0.2, speakersafetyd was made available under the terms
+of the MIT licence. Code checked in thereafter is licenced under the terms of the
+GNU General Public Licence version 2.

@@ -1,4 +1,4 @@
-# SPDX-Licence-Identifier: MIT
+# SPDX-License-Identifier: GPL-2.0-only
 # Copyright The Asahi Linux Contributors
 
 BINDIR ?= /usr/bin
