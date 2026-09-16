@@ -12,6 +12,6 @@ configparser = { version = "^3.1.0", features=["indexmap"] }
 clap = { version = "^4.6.1", features=["derive"] }
 log = "^0.4.29"
 clap-verbosity-flag = "^3.0.4"
-simple_logger = "^5.2.0"
+simple_logger = { version = "^5.2.0", default-features = false }
 signal-hook = "^0.4.4"
 libc = "^0.2.185"
