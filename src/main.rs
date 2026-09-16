@@ -102,7 +102,6 @@ fn main() {
 
     SimpleLogger::new()
         .with_level(args.verbose.log_level_filter())
-        .without_timestamps()
         .init()
         .unwrap();
     info!("Starting up");
