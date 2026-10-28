@@ -8,6 +8,7 @@ Description=Speaker Protection Daemon
 Type=simple
 ExecStart=/usr/bin/speakersafetyd -c /usr/share/speakersafetyd/ -m 7
 RuntimeDirectory=speakersafetyd
+RuntimeDirectoryPreserve=restart
 DynamicUser=true
 User=speakersafetyd
 Group=speakersafetyd
