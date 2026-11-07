@@ -8,6 +8,9 @@
     state.
 */
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Write;
+use std::os::fd::FromRawFd;
 use std::fs;
 use std::panic::{catch_unwind, resume_unwind};
 use std::path::{Path, PathBuf};
@@ -46,6 +49,10 @@ struct Options {
     /// Maximum gain reduction before panicing (for debugging)
     #[arg(short, long)]
     max_reduction: Option<f32>,
+
+    /// File descriptor to send "\n" to for readiness notification
+    #[arg(short)]
+    ready_fd: u8,
 }
 
 fn get_machine() -> String {
@@ -233,6 +240,16 @@ fn main() {
         buf.resize(globals.period * globals.channels, 0i16);
 
         let mut once_nominal = false;
+
+        if Some(args.ready_fd).is_some() {
+            unsafe {
+                let mut fd = File::from_raw_fd(args.ready_fd as i32);
+                match fd.write(b"\n") {
+                    Ok(_) => (),
+                    Err(_) => println!("Unable to open fd {}. Continuing.", args.ready_fd),
+                };
+            }
+        }
 
         loop {
             if sigquit.load(Ordering::Relaxed) {
